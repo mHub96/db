@@ -19,26 +19,26 @@
         input, select { 
             background: #000 !important; border: 1px solid #334155 !important; 
             color: white !important; outline: none !important; text-align: right;
-            transition: border-color 0.2s;
         }
         input:focus { border-color: var(--accent) !important; }
 
-        /* Modal System */
+        /* Modal */
         #edit-modal { display: none; position: fixed; inset: 0; z-index: 3000; align-items: center; justify-content: center; padding: 1.25rem; }
         #edit-modal.active { display: flex; }
         .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); }
-        .modal-content { position: relative; width: 100%; max-width: 450px; background: #1c2128; border-radius: 2rem; padding: 2rem; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .modal-content { position: relative; width: 100%; max-width: 450px; background: #1c2128; border-radius: 2rem; padding: 2rem; border: 1px solid rgba(255,255,255,0.15); }
 
-        /* List Styling */
+        /* Rows */
         .resident-row { border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; }
-        .spec-header { background: rgba(255,255,255,0.03); padding: 0.75rem 1.5rem; font-size: 0.75rem; font-weight: 800; color: var(--accent); display: flex; justify-content: space-between; border-y: 1px solid rgba(255,255,255,0.05); }
+        .spec-header { background: rgba(255,255,255,0.03); padding: 0.75rem 1.5rem; font-size: 0.75rem; font-weight: 800; color: var(--accent); display: flex; justify-content: space-between; }
 
-        /* Button States */
-        .btn-save { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .btn-save.loading { background: #3b82f6 !important; color: white; cursor: wait; opacity: 0.7; }
+        /* Save Button States */
+        .btn-save { transition: all 0.4s ease; }
+        .btn-save.loading { background: #3b82f6 !important; color: white; cursor: wait; }
         .btn-save.success { background: #10b981 !important; color: white; }
         .btn-save.error { background: #ef4444 !important; color: white; }
         
+        /* Force Phone LTR (+964 format) */
         .phone-display { direction: ltr; text-align: right; unicode-bidi: plaintext; }
     </style>
 </head>
@@ -49,30 +49,21 @@
         <div class="modal-content">
             <h3 class="text-white font-bold mb-6 text-xl text-center">تعديل بيانات المقيم</h3>
             <div class="flex flex-col gap-4">
-                <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-slate-500 mr-2 uppercase">الاسم الكامل</label>
-                    <input type="text" id="edit-name" class="p-4 rounded-xl text-sm" placeholder="الاسم">
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-slate-500 mr-2 uppercase">رقم الهاتف (+964)</label>
-                    <input type="tel" id="edit-phone" class="p-4 rounded-xl text-sm font-mono ltr text-right" placeholder="0770...">
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-slate-500 mr-2 uppercase">القسم المختص</label>
-                    <select id="edit-spec" class="p-4 rounded-xl text-sm">
-                        <option value="NS">Neurosurgery (NS)</option>
-                        <option value="CT">Cardiothoracic (CT)</option>
-                        <option value="GS">General Surg (GS)</option>
-                        <option value="US">Urosurgery (US)</option>
-                        <option value="ENT">ENT Dept (ENT)</option>
-                        <option value="H">Cardiology (H)</option>
-                        <option value="A">Anesthesia (All)</option>
-                        <option value="R">Radiology (R)</option>
-                        <option value="ON">Oncology (ON)</option>
-                    </select>
-                </div>
+                <input type="text" id="edit-name" class="p-4 rounded-xl text-sm" placeholder="الاسم">
+                <input type="tel" id="edit-phone" class="p-4 rounded-xl text-sm font-mono ltr text-right" placeholder="0770...">
+                <select id="edit-spec" class="p-4 rounded-xl text-sm">
+                    <option value="NS">Neurosurgery (NS)</option>
+                    <option value="CT">Cardiothoracic (CT)</option>
+                    <option value="GS">General Surg (GS)</option>
+                    <option value="US">Urosurgery (US)</option>
+                    <option value="ENT">ENT Dept (ENT)</option>
+                    <option value="H">Cardiology (H)</option>
+                    <option value="A">Anesthesia (All)</option>
+                    <option value="R">Radiology (R)</option>
+                    <option value="ON">Oncology (ON)</option>
+                </select>
                 <div class="flex gap-3 mt-4">
-                    <button onclick="saveEdit()" class="flex-1 bg-amber-500 text-black py-4 rounded-2xl font-black text-sm active:scale-95 transition-transform">حفظ التغييرات</button>
+                    <button onclick="saveEdit()" class="flex-1 bg-amber-500 text-black py-4 rounded-2xl font-black text-sm active:scale-95">حفظ</button>
                     <button onclick="closeModal()" class="flex-1 bg-white/5 text-white py-4 rounded-2xl font-black text-sm">إلغاء</button>
                 </div>
             </div>
@@ -83,16 +74,16 @@
         <div class="flex justify-between items-center mb-8 sticky top-0 bg-[#0b0e11]/80 backdrop-blur-md py-4 z-20">
             <div>
                 <h1 class="text-3xl font-black text-white tracking-tighter">المقيمين 🇮🇶</h1>
-                <p id="count-tag" class="text-[11px] font-bold text-amber-500 uppercase tracking-widest">تحميل البيانات...</p>
+                <p id="count-tag" class="text-[11px] font-bold text-amber-500 uppercase tracking-widest">تحميل...</p>
             </div>
             <button id="main-save-btn" onclick="saveToGithub()" class="btn-save bg-amber-500 text-black px-6 py-3 rounded-2xl text-[12px] font-black uppercase shadow-xl active:scale-90">حفظ السحابة</button>
         </div>
 
         <div class="card p-6 mb-8">
             <div class="flex flex-col gap-4">
-                <input type="text" id="new-name" placeholder="اسم المقيم (بدون د.)" class="p-4 rounded-2xl text-sm font-bold shadow-inner">
+                <input type="text" id="new-name" placeholder="اسم المقيم" class="p-4 rounded-2xl text-sm font-bold shadow-inner">
                 <div class="grid grid-cols-2 gap-3">
-                    <input type="tel" id="new-phone" placeholder="رقم الموبايل" class="p-4 rounded-2xl text-sm font-mono">
+                    <input type="tel" id="new-phone" placeholder="0770..." class="p-4 rounded-2xl text-sm font-mono">
                     <select id="new-spec" class="p-4 rounded-2xl text-sm font-bold">
                         <option value="NS">Neurosurgery</option>
                         <option value="CT">Cardiothoracic</option>
@@ -105,19 +96,19 @@
                         <option value="ON">Oncology</option>
                     </select>
                 </div>
-                <button onclick="addResident()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-sm shadow-lg hover:bg-blue-500 active:scale-[0.98] transition-all">إضافة مقيم جديد</button>
+                <button onclick="addResident()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-sm shadow-lg hover:bg-blue-500 active:scale-[0.98]">إضافة مقيم</button>
             </div>
         </div>
 
         <div class="card overflow-hidden mb-10">
             <div class="p-4 bg-white/5 border-b border-white/5">
-                <input type="text" id="search-db" oninput="renderResidents()" placeholder="بحث سريع عن الأسماء..." class="w-full p-4 px-6 rounded-2xl text-sm !bg-black border-none text-white placeholder:text-slate-600">
+                <input type="text" id="search-db" oninput="renderResidents()" placeholder="بحث سريع..." class="w-full p-4 px-6 rounded-2xl text-sm !bg-black border-none text-white">
             </div>
             <div id="resident-list" class="min-h-[200px]"></div>
         </div>
 
         <div class="text-center pb-10">
-            <a href="index.html" class="text-[11px] text-slate-600 uppercase font-black tracking-[0.3em] hover:text-amber-500 transition-colors">Return to Scheduler</a>
+            <a href="index.html" class="text-[11px] text-slate-600 uppercase font-black tracking-[0.3em] hover:text-amber-500">العودة للجدول</a>
         </div>
     </div>
 
@@ -138,14 +129,15 @@
 
     window.onload = init;
 
-    // TITLE GUARD: Ensures "د. " prefix
+    // The Title Trick Logic
     function ensureDoctorTitle(name) {
         let n = name.trim();
         if (!n) return "";
-        return (n.startsWith("د.") || n.startsWith("د ")) ? n : "د. " + n;
+        if (n.startsWith("د.") || n.startsWith("د ")) return n;
+        return "د. " + n;
     }
 
-    // PHONE FORMATTER: Converts 07... to +9647...
+    // Phone Format Trick Logic
     function formatIraqiPhone(num) {
         if(!num) return "";
         let clean = num.replace(/\D/g, ''); 
@@ -155,7 +147,7 @@
     }
 
     async function init() {
-        if (!GH_TOKEN) return alert("Please login on the main page first.");
+        if (!GH_TOKEN) return alert("يرجى تسجيل الدخول.");
         try {
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`, {
                 headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" }
@@ -163,15 +155,11 @@
             if (res.ok) {
                 const data = await res.json();
                 fileSha = data.sha;
-                const rawJson = decodeURIComponent(escape(atob(data.content.replace(/\s/g, ''))));
-                db = JSON.parse(rawJson);
-                
-                // MIGRATION: Convert old array data to objects
+                db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
                 db.names = db.names.map(item => Array.isArray(item) ? { name: item[0], spec: item[1] || "NS", phone: "" } : item);
-                
                 renderResidents();
             }
-        } catch (e) { document.getElementById('count-tag').innerText = "CONNECTION ERROR"; }
+        } catch (e) { document.getElementById('count-tag').innerText = "خطأ في الاتصال"; }
     }
 
     function renderResidents() {
@@ -201,13 +189,11 @@
                 row.innerHTML = `
                     <div class="flex flex-col text-right">
                         <span class="text-white font-bold text-sm underline decoration-amber-500/20 underline-offset-8">${res.name}</span>
-                        <span class="text-[11px] text-slate-500 font-mono mt-1 phone-display">
-                            ${res.phone || 'No Phone'}
-                        </span>
+                        <span class="text-[11px] text-slate-500 font-mono mt-1 phone-display">${res.phone || 'بدون هاتف'}</span>
                     </div>
                     <div class="flex gap-3" dir="ltr">
-                        <button onclick="openEdit(${res.idx})" class="text-[11px] font-black text-blue-400 p-2.5 px-5 border border-blue-400/20 rounded-2xl active:bg-blue-400/10">تعديل</button>
-                        <button onclick="deleteResident(${res.idx})" class="text-[11px] font-black text-red-500 p-2.5 px-5 border border-red-500/20 rounded-2xl active:bg-red-500/10">حذف</button>
+                        <button onclick="openEdit(${res.idx})" class="text-[11px] font-black text-blue-400 p-2.5 px-5 border border-blue-400/20 rounded-2xl">تعديل</button>
+                        <button onclick="deleteResident(${res.idx})" class="text-[11px] font-black text-red-500 p-2.5 px-5 border border-red-500/20 rounded-2xl">حذف</button>
                     </div>
                 `;
                 list.appendChild(row);
@@ -220,13 +206,11 @@
         const nameEl = document.getElementById('new-name');
         const phoneEl = document.getElementById('new-phone');
         if (!nameEl.value.trim()) return;
-        
         db.names.push({ 
             name: ensureDoctorTitle(nameEl.value), 
             spec: document.getElementById('new-spec').value, 
             phone: formatIraqiPhone(phoneEl.value.trim()) 
         });
-        
         nameEl.value = ""; phoneEl.value = "";
         renderResidents();
     }
@@ -257,8 +241,7 @@
     }
 
     function deleteResident(idx) {
-        // Only browser prompt left for safety
-        if (confirm(`حذف ${db.names[idx].name} نهائياً؟`)) {
+        if (confirm(`حذف ${db.names[idx].name}؟`)) {
             db.names.splice(idx, 1);
             renderResidents();
         }
@@ -267,20 +250,19 @@
     async function saveToGithub() {
         const btn = document.getElementById('main-save-btn');
         const originalText = "حفظ السحابة";
-        
         btn.innerText = "جاري المزامنة...";
         btn.className = "btn-save loading px-6 py-3 rounded-2xl text-[12px] font-black uppercase shadow-xl";
         btn.disabled = true;
 
         try {
             const body = { 
-                message: "Cloud Sync: Phone/RTL Update 🇮🇶", 
+                message: "Database Update 🇮🇶", 
                 content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
                 sha: fileSha 
             };
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
                 method: "PUT",
-                headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" },
+                headers: { "Authorization": `token ${GH_TOKEN}` },
                 body: JSON.stringify(body)
             });
 
@@ -298,7 +280,7 @@
         setTimeout(() => {
             btn.disabled = false;
             btn.innerText = originalText;
-            btn.className = "btn-save bg-amber-500 text-black px-6 py-3 rounded-2xl text-[12px] font-black uppercase shadow-xl active:scale-90";
+            btn.className = "btn-save bg-amber-500 text-black px-6 py-3 rounded-2xl text-[12px] font-black uppercase shadow-xl";
         }, 3000);
     }
 </script>
