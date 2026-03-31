@@ -5,80 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>إدارة المقيمين 🇮🇶</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { --bg: #0b0e11; --card: #16191d; --accent: #fbbf24; }
-        
-        /* FULL RTL SYSTEM */
         body { 
-            background: var(--bg); 
-            color: #94a3b8; 
-            font-family: 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', sans-serif; 
-            margin: 0; 
-            min-height: 100vh;
-            direction: rtl; 
-            text-align: right;
+            background: var(--bg); color: #94a3b8; 
+            font-family: 'IBM Plex Sans Arabic', sans-serif; 
+            margin: 0; min-height: 100vh; direction: rtl; text-align: right;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .card { background: var(--card); border: 1px solid rgba(255,255,255,0.05); border-radius: 1.25rem; }
+        /* Mobile Adjustments */
+        .safe-area-top { padding-top: env(safe-area-inset-top); }
+        .card { background: var(--card); border: 1px solid rgba(255,255,255,0.05); border-radius: 1rem; }
         
         input, select { 
-            background: #000 !important; 
-            border: 1px solid #334155 !important; 
-            color: white !important; 
-            outline: none !important; 
-            text-align: right;
+            background: #000 !important; border: 1px solid #334155 !important; 
+            color: white !important; outline: none !important; text-align: right;
+            appearance: none;
         }
-        input:focus, select:focus { border-color: var(--accent) !important; }
+
+        /* Modal Styles */
+        #edit-modal { display: none; position: fixed; inset: 0; z-index: 3000; align-items: center; justify-content: center; padding: 1rem; }
+        #edit-modal.active { display: flex; }
+        .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); }
+        .modal-content { position: relative; width: 100%; max-width: 400px; background: #1c2128; border-radius: 1.5rem; border: 1px solid rgba(255,255,255,0.1); padding: 1.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+
+        .resident-row { border-bottom: 1px solid rgba(255,255,255,0.02); display: flex; justify-content: space-between; align-items: center; }
+        .spec-header { background: rgba(255,255,255,0.03); padding: 0.6rem 1.25rem; font-size: 0.7rem; font-weight: 900; color: var(--accent); display: flex; justify-content: space-between; }
         
-        /* Row Layout: Name Right, Buttons Left */
-        .resident-row { 
-            border-bottom: 1px solid rgba(255,255,255,0.02); 
-            display: flex;
-            justify-content: space-between; /* Pushes content to opposite ends */
-            align-items: center;
-        }
-
-        .spec-header { 
-            background: rgba(255,255,255,0.03); 
-            border-top: 1px solid rgba(255,255,255,0.05); 
-            border-bottom: 1px solid rgba(255,255,255,0.05); 
-            padding: 0.5rem 1.25rem;
-            font-size: 0.65rem;
-            font-weight: 900;
-            color: var(--accent);
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .loading-overlay { position: fixed; inset: 0; background: rgba(11,14,17,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .loading-overlay { position: fixed; inset: 0; background: rgba(11,14,17,0.9); z-index: 4000; display: none; align-items: center; justify-content: center; }
         .is-loading .loading-overlay { display: flex; }
-        
-        /* Ensuring buttons stay on the left in LTR fashion internally */
-        .btn-group { display: flex; gap: 0.5rem; direction: ltr; }
     </style>
 </head>
-<body class="p-4 md:p-10">
+<body class="pb-20">
 
-    <div id="loader" class="loading-overlay"><div class="text-white font-black animate-pulse text-xs uppercase tracking-widest">جاري التحديث...</div></div>
+    <div id="loader" class="loading-overlay"><div class="text-white font-black animate-pulse">جاري المزامنة...</div></div>
 
-    <div class="max-w-4xl mx-auto">
-        <div class="flex justify-between items-center mb-10">
-            <div>
-                <h1 class="text-3xl font-black text-white tracking-tighter uppercase">قاعدة بيانات المقيمين 🇮🇶</h1>
-                <p class="text-[10px] font-bold text-amber-500 uppercase tracking-[0.2em]">إدارة أرقام الهواتف والأقسام</p>
-            </div>
-            <div class="flex gap-2">
-                <a href="index.html" class="bg-white/5 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase">الجدول الرئيسي</a>
-                <button onclick="saveToGithub()" id="save-btn" class="bg-amber-500 text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase">حفظ التغييرات</button>
-            </div>
-        </div>
-
-        <div class="card p-6 mb-8">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <input type="text" id="new-name" placeholder="الاسم (د. محمد...)" class="md:col-span-5 p-3 rounded-xl text-sm font-bold">
-                <input type="tel" id="new-phone" placeholder="0770..." class="md:col-span-3 p-3 rounded-xl text-sm font-bold">
-                <select id="new-spec" class="md:col-span-3 p-3 rounded-xl text-sm font-bold">
+    <div id="edit-modal">
+        <div class="modal-overlay" onclick="closeModal()"></div>
+        <div class="modal-content">
+            <h3 class="text-white font-bold mb-4 text-center">تعديل بيانات المقيم</h3>
+            <div class="flex flex-col gap-4">
+                <input type="text" id="edit-name" class="p-4 rounded-xl text-sm" placeholder="الاسم">
+                <input type="tel" id="edit-phone" class="p-4 rounded-xl text-sm font-mono" placeholder="رقم الهاتف">
+                <select id="edit-spec" class="p-4 rounded-xl text-sm">
                     <option value="NS">Neurosurgery (NS)</option>
                     <option value="CT">Cardiothoracic (CT)</option>
                     <option value="GS">General Surg (GS)</option>
@@ -89,16 +60,54 @@
                     <option value="R">Radiology (R)</option>
                     <option value="ON">Oncology (ON)</option>
                 </select>
-                <button onclick="addResident()" class="md:col-span-1 bg-blue-600 text-white rounded-xl font-black text-xs uppercase">إضافة</button>
+                <div class="flex gap-2 mt-2">
+                    <button onclick="saveEdit()" class="flex-1 bg-amber-500 text-black py-3 rounded-xl font-black text-sm">حفظ</button>
+                    <button onclick="closeModal()" class="flex-1 bg-white/10 text-white py-3 rounded-xl font-black text-sm">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-xl mx-auto px-4 safe-area-top">
+        
+        <div class="flex justify-between items-center py-6 sticky top-0 bg-[#0b0e11] z-10">
+            <div>
+                <h1 class="text-2xl font-black text-white tracking-tighter">إدارة المقيمين 🇮🇶</h1>
+                <p id="count-tag" class="text-[10px] font-bold text-amber-500 uppercase">العدد: 0</p>
+            </div>
+            <button onclick="saveToGithub()" class="bg-amber-500 text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase">حفظ السحابة</button>
+        </div>
+
+        <div class="card p-5 mb-6">
+            <div class="flex flex-col gap-3">
+                <input type="text" id="new-name" placeholder="اسم المقيم الجديد" class="p-4 rounded-xl text-sm">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="tel" id="new-phone" placeholder="0770..." class="p-4 rounded-xl text-sm font-mono">
+                    <select id="new-spec" class="p-4 rounded-xl text-sm">
+                        <option value="NS">Neurosurgery</option>
+                        <option value="CT">Cardiothoracic</option>
+                        <option value="GS">General Surg</option>
+                        <option value="US">Urosurgery</option>
+                        <option value="ENT">ENT Dept</option>
+                        <option value="H">Cardiology</option>
+                        <option value="A">Anesthesia</option>
+                        <option value="R">Radiology</option>
+                        <option value="ON">Oncology</option>
+                    </select>
+                </div>
+                <button onclick="addResident()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-sm">إضافة مقيم جديد</button>
             </div>
         </div>
 
         <div class="card overflow-hidden">
-            <div class="p-4 border-b border-white/5 flex justify-between items-center bg-white/5">
-                <input type="text" id="search-db" oninput="renderResidents()" placeholder="بحث عن اسم..." class="w-full md:w-64 p-2 px-4 rounded-lg text-xs font-bold !bg-black">
-                <span id="count-tag" class="text-[10px] font-black text-amber-500 uppercase">العدد الكلي: 0</span>
+            <div class="p-3 bg-white/5 border-b border-white/5">
+                <input type="text" id="search-db" oninput="renderResidents()" placeholder="بحث سريع..." class="w-full p-3 px-4 rounded-lg text-sm !bg-black border-none">
             </div>
-            <div id="resident-list" class="max-h-[60vh] overflow-y-auto"></div>
+            <div id="resident-list"></div>
+        </div>
+        
+        <div class="mt-4 text-center">
+            <a href="index.html" class="text-[10px] text-slate-600 uppercase font-bold tracking-widest">العودة للجدول الرئيسي</a>
         </div>
     </div>
 
@@ -115,6 +124,7 @@
     let GH_TOKEN = localStorage.getItem('gh_token');
     let db = { names: [], schedule: [] };
     let fileSha = "";
+    let currentEditIdx = null;
 
     window.onload = init;
 
@@ -126,17 +136,16 @@
     }
 
     async function init() {
-        if (!GH_TOKEN) return alert("يرجى تسجيل الدخول أولاً!");
+        if (!GH_TOKEN) return alert("يرجى تسجيل الدخول!");
         document.body.classList.add('is-loading');
         try {
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`, {
-                headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" }
+                headers: { "Authorization": `token ${GH_TOKEN}` }
             });
             if (res.ok) {
                 const data = await res.json();
                 fileSha = data.sha;
                 db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
-                db.names = db.names.map(e => Array.isArray(e) ? { name: e[0], spec: e[1], phone: "" } : e);
                 renderResidents();
             }
         } catch (e) { console.error(e); }
@@ -170,17 +179,17 @@
                 row.innerHTML = `
                     <div class="flex flex-col">
                         <span class="text-white font-bold text-sm">${res.name}</span>
-                        <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${res.phone || 'بدون رقم'}</span>
+                        <span class="text-[10px] text-slate-500 font-mono">${res.phone || 'بدون هاتف'}</span>
                     </div>
-                    <div class="btn-group">
-                        <button onclick="editResident(${res.idx})" class="text-[9px] font-bold text-blue-400 uppercase px-3 py-1.5 border border-blue-400/20 rounded-lg transition-all hover:bg-blue-400/10">Edit</button>
-                        <button onclick="deleteResident(${res.idx})" class="text-[9px] font-bold text-red-500 uppercase px-3 py-1.5 border border-red-500/20 rounded-lg transition-all hover:bg-red-500/10">Delete</button>
+                    <div class="flex gap-2" style="direction: ltr">
+                        <button onclick="openEdit(${res.idx})" class="text-[10px] font-bold text-blue-400 p-2 px-4 border border-blue-400/20 rounded-lg">تعديل</button>
+                        <button onclick="deleteResident(${res.idx})" class="text-[10px] font-bold text-red-500 p-2 px-4 border border-red-500/20 rounded-lg">حذف</button>
                     </div>
                 `;
                 list.appendChild(row);
             });
         });
-        document.getElementById('count-tag').innerText = `العدد الكلي: ${db.names.length}`;
+        document.getElementById('count-tag').innerText = `العدد: ${db.names.length}`;
     }
 
     function addResident() {
@@ -194,37 +203,52 @@
         renderResidents();
     }
 
-    function editResident(index) {
-        const res = db.names[index];
-        const newName = prompt("تعديل الاسم:", res.name);
-        const newPhoneRaw = prompt("تعديل الرقم:", res.phone || "");
-        if (newName !== null) {
-            db.names[index].name = newName.trim();
-            if (newPhoneRaw !== null) db.names[index].phone = formatIraqiPhone(newPhoneRaw.trim());
-            renderResidents();
-        }
+    // MODAL LOGIC
+    function openEdit(idx) {
+        currentEditIdx = idx;
+        const res = db.names[idx];
+        document.getElementById('edit-name').value = res.name;
+        document.getElementById('edit-phone').value = res.phone || "";
+        document.getElementById('edit-spec').value = res.spec;
+        document.getElementById('edit-modal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('edit-modal').classList.remove('active');
+        currentEditIdx = null;
+    }
+
+    function saveEdit() {
+        if (currentEditIdx === null) return;
+        db.names[currentEditIdx] = {
+            name: document.getElementById('edit-name').value.trim(),
+            phone: formatIraqiPhone(document.getElementById('edit-phone').value.trim()),
+            spec: document.getElementById('edit-spec').value
+        };
+        closeModal();
+        renderResidents();
     }
 
     function deleteResident(idx) {
-        if (confirm(`هل أنت متأكد من حذف ${db.names[idx].name}؟`)) {
+        if (confirm(`حذف ${db.names[idx].name}؟`)) {
             db.names.splice(idx, 1);
             renderResidents();
         }
     }
 
     async function saveToGithub() {
-        const btn = document.getElementById('save-btn');
-        btn.innerText = "جاري الحفظ...";
+        const btn = document.querySelector('[onclick="saveToGithub()"]');
+        btn.innerText = "...";
         document.body.classList.add('is-loading');
         try {
             const body = { 
-                message: "RTL Update & Phone Formatting 🇮🇶", 
+                message: "Mobile UI & Modal Edit Update 🇮🇶", 
                 content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
                 sha: fileSha 
             };
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
                 method: "PUT",
-                headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" },
+                headers: { "Authorization": `token ${GH_TOKEN}` },
                 body: JSON.stringify(body)
             });
             if (res.ok) {
@@ -232,8 +256,8 @@
                 fileSha = updated.content.sha;
                 alert("تم الحفظ بنجاح! ✅");
             }
-        } catch (e) { alert("خطأ في الحفظ."); }
-        btn.innerText = "حفظ التغييرات";
+        } catch (e) { alert("خطأ في الحفظ"); }
+        btn.innerText = "حفظ السحابة";
         document.body.classList.remove('is-loading');
     }
 </script>
