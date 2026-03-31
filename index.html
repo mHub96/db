@@ -124,27 +124,46 @@
 
     // --- RE-ADDING THE MIGRATION FUNCTION ---
     async function migrateFromGoogle() {
-        if (!GH_TOKEN) return alert("Login first!");
-        const btn = document.getElementById('sync-btn');
-        btn.innerText = "WAIT...";
-        
-        try {
-            const [nRes, sRes] = await Promise.all([
-                fetch(`${CONFIG.googleUrl}?action=getNames`),
-                fetch(`${CONFIG.googleUrl}?action=getSchedule&month=${document.getElementById('month-picker').value}`)
-            ]);
-            
-            db.names = await nRes.json();
-            db.schedule = await sRes.json();
-            
-            // Push this new data to GitHub
-            await saveToGithub();
-            alert("Success! Everything is moved to GitHub. 🇮🇶");
-            location.reload();
-        } catch(e) {
-            alert("Migration failed. Make sure your Google Script is still active.");
+    if (!GH_TOKEN) return alert("Please Login first! 🇮🇶");
+    
+    const btn = document.getElementById('sync-btn');
+    const originalText = btn.innerText;
+    btn.innerText = "MIGRATING... ⏳";
+    
+    try {
+        const monthParam = document.getElementById('month-picker').value; // e.g., "2026-03"
+
+        // 1. Fetch Names from your existing "getNames" route
+        const nameRes = await fetch(`${CONFIG.googleUrl}?action=getNames`);
+        const namesData = await nameRes.json();
+
+        // 2. Fetch Schedule from your existing "getSchedule" route
+        const schedRes = await fetch(`${CONFIG.googleUrl}?action=getSchedule&month=${monthParam}`);
+        const schedData = await schedRes.json();
+
+        if (namesData.error || schedData.error) {
+            throw new Error(namesData.error || schedData.error);
         }
+
+        // 3. Combine them into the GitHub format
+        db.names = namesData;      // Your script returns [[Name, Spec], ...]
+        db.schedule = schedData;   // Your script returns [{date, specCode, name}, ...]
+
+        console.log("Data merged successfully:", db);
+
+        // 4. Save the combined data to your GitHub data.json
+        await saveToGithub();
+        
+        alert("Migration Success! Your Google data is now on GitHub. 🇮🇶");
+        location.reload();
+
+    } catch (e) {
+        console.error("Migration Error:", e);
+        alert("Migration failed: " + e.message);
+    } finally {
+        btn.innerText = originalText;
     }
+}
 
     // ... (Keep the rest of your UI functions like generateBoard and saveToGithub)
 </script>
