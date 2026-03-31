@@ -14,33 +14,24 @@
             margin: 0; min-height: 100vh; direction: rtl; text-align: right;
             -webkit-tap-highlight-color: transparent;
         }
-
-        /* Mobile Adjustments */
-        .safe-area-top { padding-top: env(safe-area-inset-top); }
         .card { background: var(--card); border: 1px solid rgba(255,255,255,0.05); border-radius: 1rem; }
-        
         input, select { 
             background: #000 !important; border: 1px solid #334155 !important; 
             color: white !important; outline: none !important; text-align: right;
-            appearance: none;
         }
-
-        /* Modal Styles */
         #edit-modal { display: none; position: fixed; inset: 0; z-index: 3000; align-items: center; justify-content: center; padding: 1rem; }
         #edit-modal.active { display: flex; }
         .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); }
-        .modal-content { position: relative; width: 100%; max-width: 400px; background: #1c2128; border-radius: 1.5rem; border: 1px solid rgba(255,255,255,0.1); padding: 1.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-
+        .modal-content { position: relative; width: 100%; max-width: 400px; background: #1c2128; border-radius: 1.5rem; padding: 1.5rem; }
         .resident-row { border-bottom: 1px solid rgba(255,255,255,0.02); display: flex; justify-content: space-between; align-items: center; }
         .spec-header { background: rgba(255,255,255,0.03); padding: 0.6rem 1.25rem; font-size: 0.7rem; font-weight: 900; color: var(--accent); display: flex; justify-content: space-between; }
-        
         .loading-overlay { position: fixed; inset: 0; background: rgba(11,14,17,0.9); z-index: 4000; display: none; align-items: center; justify-content: center; }
         .is-loading .loading-overlay { display: flex; }
     </style>
 </head>
 <body class="pb-20">
 
-    <div id="loader" class="loading-overlay"><div class="text-white font-black animate-pulse">جاري المزامنة...</div></div>
+    <div id="loader" class="loading-overlay"><div class="text-white font-black animate-pulse">جاري التحميل...</div></div>
 
     <div id="edit-modal">
         <div class="modal-overlay" onclick="closeModal()"></div>
@@ -68,11 +59,10 @@
         </div>
     </div>
 
-    <div class="max-w-xl mx-auto px-4 safe-area-top">
-        
+    <div class="max-w-xl mx-auto px-4">
         <div class="flex justify-between items-center py-6 sticky top-0 bg-[#0b0e11] z-10">
             <div>
-                <h1 class="text-2xl font-black text-white tracking-tighter">إدارة المقيمين 🇮🇶</h1>
+                <h1 class="text-2xl font-black text-white">إدارة المقيمين 🇮🇶</h1>
                 <p id="count-tag" class="text-[10px] font-bold text-amber-500 uppercase">العدد: 0</p>
             </div>
             <button onclick="saveToGithub()" class="bg-amber-500 text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase">حفظ السحابة</button>
@@ -101,13 +91,9 @@
 
         <div class="card overflow-hidden">
             <div class="p-3 bg-white/5 border-b border-white/5">
-                <input type="text" id="search-db" oninput="renderResidents()" placeholder="بحث سريع..." class="w-full p-3 px-4 rounded-lg text-sm !bg-black border-none">
+                <input type="text" id="search-db" oninput="renderResidents()" placeholder="بحث سريع..." class="w-full p-3 px-4 rounded-lg text-sm !bg-black border-none text-white">
             </div>
             <div id="resident-list"></div>
-        </div>
-        
-        <div class="mt-4 text-center">
-            <a href="index.html" class="text-[10px] text-slate-600 uppercase font-bold tracking-widest">العودة للجدول الرئيسي</a>
         </div>
     </div>
 
@@ -129,6 +115,7 @@
     window.onload = init;
 
     function formatIraqiPhone(num) {
+        if(!num) return "";
         let clean = num.replace(/\D/g, ''); 
         if (clean.startsWith('07')) return '+964' + clean.substring(1);
         if (clean.startsWith('7')) return '+964' + clean;
@@ -136,36 +123,53 @@
     }
 
     async function init() {
-        if (!GH_TOKEN) return alert("يرجى تسجيل الدخول!");
+        if (!GH_TOKEN) return alert("يرجى تسجيل الدخول من الصفحة الرئيسية!");
         document.body.classList.add('is-loading');
         try {
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`, {
-                headers: { "Authorization": `token ${GH_TOKEN}` }
+                headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" }
             });
             if (res.ok) {
                 const data = await res.json();
                 fileSha = data.sha;
-                db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
+                const rawJson = decodeURIComponent(escape(atob(data.content.replace(/\s/g, ''))));
+                db = JSON.parse(rawJson);
+
+                // CRITICAL MIGRATION: Convert old [name, spec] to {name, spec, phone}
+                db.names = db.names.map(item => {
+                    if (Array.isArray(item)) {
+                        return { name: item[0], spec: item[1] || "NS", phone: "" };
+                    }
+                    return item;
+                });
+
                 renderResidents();
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error(e); 
+            alert("حدث خطأ في جلب البيانات من GitHub");
+        }
         document.body.classList.remove('is-loading');
     }
 
     function renderResidents() {
         const list = document.getElementById('resident-list');
-        const searchTerm = document.getElementById('search-db').value.toLowerCase();
+        const searchTerm = (document.getElementById('search-db').value || "").toLowerCase();
         list.innerHTML = "";
         
         const grouped = {};
         specialties.forEach(s => grouped[s.id] = []);
+        
         db.names.forEach((res, i) => {
-            if (res.name.toLowerCase().includes(searchTerm)) grouped[res.spec]?.push({ ...res, idx: i });
+            const name = res.name || "";
+            if (name.toLowerCase().includes(searchTerm)) {
+                grouped[res.spec]?.push({ ...res, idx: i });
+            }
         });
 
         specialties.forEach(spec => {
             const residents = grouped[spec.id];
-            if (residents.length === 0) return;
+            if (!residents || residents.length === 0) return;
             residents.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
 
             const header = document.createElement('div');
@@ -179,9 +183,9 @@
                 row.innerHTML = `
                     <div class="flex flex-col">
                         <span class="text-white font-bold text-sm">${res.name}</span>
-                        <span class="text-[10px] text-slate-500 font-mono">${res.phone || 'بدون هاتف'}</span>
+                        <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${res.phone || 'بدون هاتف'}</span>
                     </div>
-                    <div class="flex gap-2" style="direction: ltr">
+                    <div class="flex gap-2" dir="ltr">
                         <button onclick="openEdit(${res.idx})" class="text-[10px] font-bold text-blue-400 p-2 px-4 border border-blue-400/20 rounded-lg">تعديل</button>
                         <button onclick="deleteResident(${res.idx})" class="text-[10px] font-bold text-red-500 p-2 px-4 border border-red-500/20 rounded-lg">حذف</button>
                     </div>
@@ -196,14 +200,13 @@
         const name = document.getElementById('new-name').value.trim();
         const rawPhone = document.getElementById('new-phone').value.trim();
         const spec = document.getElementById('new-spec').value;
-        if (!name) return;
+        if (!name) return alert("يرجى إدخال الاسم");
         db.names.push({ name, spec, phone: formatIraqiPhone(rawPhone) });
         document.getElementById('new-name').value = "";
         document.getElementById('new-phone').value = "";
         renderResidents();
     }
 
-    // MODAL LOGIC
     function openEdit(idx) {
         currentEditIdx = idx;
         const res = db.names[idx];
@@ -242,13 +245,13 @@
         document.body.classList.add('is-loading');
         try {
             const body = { 
-                message: "Mobile UI & Modal Edit Update 🇮🇶", 
+                message: "Sync: Database Format Update 🇮🇶", 
                 content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
                 sha: fileSha 
             };
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
                 method: "PUT",
-                headers: { "Authorization": `token ${GH_TOKEN}` },
+                headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" },
                 body: JSON.stringify(body)
             });
             if (res.ok) {
@@ -256,7 +259,7 @@
                 fileSha = updated.content.sha;
                 alert("تم الحفظ بنجاح! ✅");
             }
-        } catch (e) { alert("خطأ في الحفظ"); }
+        } catch (e) { alert("فشل الحفظ في السحابة"); }
         btn.innerText = "حفظ السحابة";
         document.body.classList.remove('is-loading');
     }
