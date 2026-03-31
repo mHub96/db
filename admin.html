@@ -29,23 +29,19 @@
         .modal-content { position: relative; width: 100%; max-width: 450px; background: #1c2128; border-radius: 2rem; padding: 2rem; border: 1px solid rgba(255,255,255,0.15); }
 
         /* Collapsible System */
-        .resident-row { border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; }
         .spec-header { 
             background: rgba(255,255,255,0.03); padding: 0.85rem 1.5rem; 
             font-size: 0.75rem; font-weight: 800; color: var(--accent); 
             display: flex; justify-content: space-between; align-items: center;
-            cursor: pointer; user-select: none; transition: background 0.2s;
+            cursor: pointer; user-select: none;
         }
-        .spec-header:active { background: rgba(255,255,255,0.08); }
-        
         .spec-content { display: block; overflow: hidden; }
         .spec-content.hidden { display: none; }
-        
         .chevron { transition: transform 0.3s; font-size: 0.6rem; opacity: 0.5; }
         .collapsed .chevron { transform: rotate(90deg); }
 
-        /* Buttons */
-        .btn-save { transition: all 0.4s ease; }
+        /* Sync Button States */
+        .btn-save { transition: all 0.4s ease; min-width: 120px; }
         .btn-save.loading { background: #3b82f6 !important; color: white; cursor: wait; }
         .btn-save.success { background: #10b981 !important; color: white; }
         .btn-save.error { background: #ef4444 !important; color: white; }
@@ -75,7 +71,7 @@
                     <option value="RESERVE">RESERVE (احتياط)</option>
                 </select>
                 <div class="flex gap-3 mt-4">
-                    <button onclick="saveEdit()" class="flex-1 bg-amber-500 text-black py-4 rounded-2xl font-black text-sm">حفظ</button>
+                    <button onclick="saveEdit()" class="flex-1 bg-amber-500 text-black py-4 rounded-2xl font-black text-sm">تأكيد التعديل</button>
                     <button onclick="closeModal()" class="flex-1 bg-white/5 text-white py-4 rounded-2xl font-black text-sm">إلغاء</button>
                 </div>
             </div>
@@ -86,9 +82,9 @@
         <div class="flex justify-between items-center mb-8 sticky top-0 bg-[#0b0e11]/80 backdrop-blur-md py-4 z-20">
             <div>
                 <h1 class="text-3xl font-black text-white tracking-tighter">المقيمين 🇮🇶</h1>
-                <p id="count-tag" class="text-[11px] font-bold text-amber-500 uppercase">تحميل...</p>
+                <p id="count-tag" class="text-[11px] font-bold text-amber-500 uppercase">جاري المزامنة...</p>
             </div>
-            <button id="main-save-btn" onclick="saveToGithub()" class="btn-save bg-amber-500 text-black px-6 py-3 rounded-2xl text-[12px] font-black uppercase shadow-xl">حفظ السحابة</button>
+            <button id="main-save-btn" onclick="saveToGithub()" class="btn-save bg-white/5 text-slate-400 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase">سحابة متزامنة</button>
         </div>
 
         <div class="card p-6 mb-8">
@@ -109,7 +105,7 @@
                         <option value="RESERVE">RESERVE</option>
                     </select>
                 </div>
-                <button onclick="addResident()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-sm">إضافة مقيم</button>
+                <button onclick="addResident()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-sm active:scale-95 transition-transform">إضافة وحفظ</button>
             </div>
         </div>
 
@@ -131,9 +127,7 @@
         { id: "ON", name: "Oncology" }, { id: "RESERVE", name: "RESERVE (احتياط)" }
     ];
 
-    // Local storage for section states
     let sectionStates = JSON.parse(localStorage.getItem('admin_sections')) || { "RESERVE": false };
-
     let GH_TOKEN = localStorage.getItem('gh_token');
     let db = { names: [], schedule: [] };
     let fileSha = "";
@@ -144,8 +138,7 @@
     function ensureDoctorTitle(name) {
         let n = name.trim();
         if (!n) return "";
-        if (n.startsWith("د.") || n.startsWith("د ")) return n;
-        return "د. " + n;
+        return (n.startsWith("د.") || n.startsWith("د ")) ? n : "د. " + n;
     }
 
     function formatIraqiPhone(num) {
@@ -194,10 +187,8 @@
             if (!residents || residents.length === 0) return;
             residents.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
 
-            // Header Container
             const section = document.createElement('div');
-            const isOpen = sectionStates[spec.id] !== false; // Default true unless explicitly false
-            
+            const isOpen = sectionStates[spec.id] !== false;
             section.className = isOpen ? "" : "collapsed";
 
             const header = document.createElement('div');
@@ -205,7 +196,7 @@
             header.onclick = () => toggleSection(spec.id);
             header.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <span class="chevron">▶</span>
+                    <span class="chevron" style="transform: rotate(${isOpen ? '90deg' : '0deg'})">▶</span>
                     <span>${spec.name}</span>
                 </div>
                 <span class="bg-white/10 px-2 py-0.5 rounded text-[10px]">${residents.length}</span>
@@ -223,8 +214,8 @@
                         <span class="text-[11px] text-slate-500 font-mono mt-1 phone-display">${res.phone || 'بدون هاتف'}</span>
                     </div>
                     <div class="flex gap-3" dir="ltr">
-                        <button onclick="openEdit(${res.idx})" class="text-[11px] font-black text-blue-400 p-2.5 px-5 border border-blue-400/20 rounded-2xl">تعديل</button>
-                        <button onclick="deleteResident(${res.idx})" class="text-[11px] font-black text-red-500 p-2.5 px-5 border border-red-500/20 rounded-2xl">حذف</button>
+                        <button onclick="openEdit(${res.idx})" class="text-[11px] font-black text-blue-400 p-2.5 px-5 border border-blue-400/20 rounded-2xl active:bg-blue-400/10">تعديل</button>
+                        <button onclick="deleteResident(${res.idx})" class="text-[11px] font-black text-red-500 p-2.5 px-5 border border-red-500/20 rounded-2xl active:bg-red-500/10">حذف</button>
                     </div>
                 `;
                 content.appendChild(row);
@@ -237,17 +228,21 @@
         document.getElementById('count-tag').innerText = `العدد الإجمالي: ${db.names.length}`;
     }
 
-    function addResident() {
+    // AUTO-SYNC TRIGGER: Used inside Add, Edit, and Delete
+    async function addResident() {
         const nameEl = document.getElementById('new-name');
         const phoneEl = document.getElementById('new-phone');
         if (!nameEl.value.trim()) return;
+        
         db.names.push({ 
             name: ensureDoctorTitle(nameEl.value), 
             spec: document.getElementById('new-spec').value, 
             phone: formatIraqiPhone(phoneEl.value.trim()) 
         });
+        
         nameEl.value = ""; phoneEl.value = "";
         renderResidents();
+        await saveToGithub(); // Instant background save
     }
 
     function openEdit(idx) {
@@ -264,7 +259,7 @@
         currentEditIdx = null;
     }
 
-    function saveEdit() {
+    async function saveEdit() {
         if (currentEditIdx === null) return;
         db.names[currentEditIdx] = {
             name: ensureDoctorTitle(document.getElementById('edit-name').value),
@@ -273,24 +268,26 @@
         };
         closeModal();
         renderResidents();
+        await saveToGithub(); // Instant background save
     }
 
-    function deleteResident(idx) {
+    async function deleteResident(idx) {
         if (confirm(`حذف ${db.names[idx].name}؟`)) {
             db.names.splice(idx, 1);
             renderResidents();
+            await saveToGithub(); // Instant background save
         }
     }
 
     async function saveToGithub() {
         const btn = document.getElementById('main-save-btn');
-        btn.innerText = "جاري المزامنة...";
-        btn.className = "btn-save loading px-6 py-3 rounded-2xl text-[12px] font-black uppercase shadow-xl";
+        btn.innerText = "جاري الحفظ...";
+        btn.className = "btn-save loading px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-xl";
         btn.disabled = true;
 
         try {
             const body = { 
-                message: "Reserve & Collapsible Logic Update 🇮🇶", 
+                message: "Auto-Sync: Database Action Update 🇮🇶", 
                 content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
                 sha: fileSha 
             };
@@ -303,19 +300,19 @@
             if (res.ok) {
                 const updated = await res.json();
                 fileSha = updated.content.sha;
-                btn.innerText = "تم الحفظ بنجاح! ✅";
-                btn.className = "btn-save success px-6 py-3 rounded-2xl text-[12px] font-black uppercase shadow-xl";
+                btn.innerText = "تم الحفظ! ✅";
+                btn.className = "btn-save success px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-xl";
             } else { throw new Error(); }
         } catch (e) {
-            btn.innerText = "فشل المزامنة! ❌";
-            btn.className = "btn-save error px-6 py-3 rounded-2xl text-[12px] font-black uppercase shadow-xl";
+            btn.innerText = "فشل الحفظ! ❌";
+            btn.className = "btn-save error px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-xl";
         }
 
         setTimeout(() => {
             btn.disabled = false;
-            btn.innerText = "حفظ السحابة";
-            btn.className = "btn-save bg-amber-500 text-black px-6 py-3 rounded-2xl text-[12px] font-black uppercase shadow-xl";
-        }, 3000);
+            btn.innerText = "سحابة متزامنة";
+            btn.className = "btn-save bg-white/5 text-slate-400 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase";
+        }, 2500);
     }
 </script>
 </body>
