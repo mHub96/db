@@ -9,80 +9,61 @@
     <style>
         :root { --bg: #0b0e11; --card: #16191d; --accent: #fbbf24; }
         body { background: var(--bg); color: #94a3b8; font-family: 'Plus Jakarta Sans', 'IBM Plex Sans Arabic', sans-serif; margin: 0; min-height: 100vh; }
-        
-        .card { background: var(--card); border: 1px solid rgba(255,255,255,0.05); border-radius: 1.25rem; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); }
-        input, select { background: #000 !important; border: 1px solid #334155 !important; color: white !important; outline: none !important; transition: border-color 0.2s; }
+        .card { background: var(--card); border: 1px solid rgba(255,255,255,0.05); border-radius: 1.25rem; }
+        input, select { background: #000 !important; border: 1px solid #334155 !important; color: white !important; outline: none !important; }
         input:focus, select:focus { border-color: var(--accent) !important; }
-        
-        .resident-row { border-bottom: 1px solid rgba(255,255,255,0.02); transition: background 0.2s; }
-        .resident-row:hover { background: rgba(255,255,255,0.03); }
-        
-        .spec-header { background: rgba(255,255,255,0.03); border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); }
-        
+        .resident-row { border-bottom: 1px solid rgba(255,255,255,0.02); }
+        .spec-header { background: rgba(255,255,255,0.03); border-y: 1px solid rgba(255,255,255,0.05); }
         .loading-overlay { position: fixed; inset: 0; background: rgba(11,14,17,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
         .is-loading .loading-overlay { display: flex; }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
 <body class="p-4 md:p-10">
 
-    <div id="loader" class="loading-overlay"><div class="text-white font-black animate-pulse">SYNCING WITH GITHUB...</div></div>
+    <div id="loader" class="loading-overlay"><div class="text-white font-black animate-pulse text-xs uppercase tracking-widest">Updating Database...</div></div>
 
     <div class="max-w-4xl mx-auto">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+        <div class="flex justify-between items-center mb-10">
             <div>
                 <h1 class="text-3xl font-black text-white tracking-tighter uppercase">Resident DB 🇮🇶</h1>
-                <p class="text-xs font-bold text-amber-500/60 tracking-widest uppercase">Management Suite</p>
+                <p class="text-[10px] font-bold text-amber-500 uppercase tracking-[0.2em]">Contact & Specialty Registry</p>
             </div>
-            <div class="flex gap-3">
-                <a href="index.html" class="bg-white/5 hover:bg-white/10 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">← Back to Scheduler</a>
-                <button onclick="saveToGithub()" id="save-btn" class="bg-amber-500 hover:bg-amber-400 text-black px-6 py-2.5 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-amber-500/20 active:scale-95 transition-all">Save All Changes</button>
+            <div class="flex gap-2">
+                <a href="index.html" class="bg-white/5 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase">Scheduler</a>
+                <button onclick="saveToGithub()" id="save-btn" class="bg-amber-500 text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase">Save to GH</button>
             </div>
         </div>
 
         <div class="card p-6 mb-8">
-            <div class="flex items-center gap-2 mb-6">
-                <div class="w-1.5 h-4 bg-amber-500 rounded-full"></div>
-                <h2 class="text-xs font-black text-white uppercase tracking-widest">Register New Resident</h2>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <input type="text" id="new-name" placeholder="Name (e.g. د. محمد...)" class="md:col-span-6 p-3.5 rounded-xl text-sm font-bold">
-                <select id="new-spec" class="md:col-span-4 p-3.5 rounded-xl text-sm font-bold">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <input type="text" id="new-name" placeholder="Name (د. محمد...)" class="md:col-span-5 p-3 rounded-xl text-sm font-bold">
+                <input type="tel" id="new-phone" placeholder="Phone (077...)" class="md:col-span-3 p-3 rounded-xl text-sm font-bold">
+                <select id="new-spec" class="md:col-span-3 p-3 rounded-xl text-sm font-bold">
                     <option value="NS">Neurosurgery (NS)</option>
                     <option value="CT">Cardiothoracic (CT)</option>
                     <option value="GS">General Surg (GS)</option>
                     <option value="US">Urosurgery (US)</option>
                     <option value="ENT">ENT Dept (ENT)</option>
                     <option value="H">Cardiology (H)</option>
-                    <option value="A">Anesthesia (OP/ICU)</option>
+                    <option value="A">Anesthesia (All)</option>
                     <option value="R">Radiology (R)</option>
                     <option value="ON">Oncology (ON)</option>
                 </select>
-                <button onclick="addResident()" class="md:col-span-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[10px] uppercase transition-all">Add</button>
+                <button onclick="addResident()" class="md:col-span-1 bg-blue-600 text-white rounded-xl font-black text-xs uppercase hover:bg-blue-500">Add</button>
             </div>
         </div>
 
         <div class="card overflow-hidden">
-            <div class="p-5 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-white/5">
-                <div class="relative w-full md:w-64">
-                    <input type="text" id="search-db" oninput="renderResidents()" placeholder="Search names..." class="w-full p-2.5 pl-4 rounded-lg text-xs font-bold border-none !bg-white/5">
-                </div>
-                <span id="count-tag" class="text-[10px] font-black text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full uppercase tracking-widest">0 Total Residents</span>
+            <div class="p-4 border-b border-white/5 flex justify-between items-center bg-white/5">
+                <input type="text" id="search-db" oninput="renderResidents()" placeholder="Search staff..." class="w-full md:w-64 p-2 px-4 rounded-lg text-xs font-bold !bg-black">
+                <span id="count-tag" class="text-[10px] font-black text-amber-500 uppercase">0 Total</span>
             </div>
-            
-            <div id="resident-list" class="max-h-[60vh] overflow-y-auto">
-                </div>
+            <div id="resident-list" class="max-h-[60vh] overflow-y-auto"></div>
         </div>
     </div>
 
 <script>
-    const CONFIG = {
-        user: "mHub96", repo: "db", path: "data.json",
-        rawUrl: "https://raw.githubusercontent.com/mHub96/db/main/data.json"
-    };
-
+    const CONFIG = { user: "mHub96", repo: "db", path: "data.json" };
     const specialties = [
         { id: "NS", name: "Neurosurgery" }, { id: "CT", name: "Cardiothoracic" },
         { id: "GS", name: "General Surg" }, { id: "US", name: "Urosurgery" },
@@ -97,13 +78,9 @@
 
     window.onload = init;
 
-    function toggleLoader(show) {
-        document.body.classList.toggle('is-loading', show);
-    }
-
     async function init() {
-        if (!GH_TOKEN) return alert("No GitHub Token found. Please login on the main page first! 🇮🇶");
-        toggleLoader(true);
+        if (!GH_TOKEN) return alert("Login first!");
+        document.body.classList.add('is-loading');
         try {
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`, {
                 headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" }
@@ -112,41 +89,40 @@
                 const data = await res.json();
                 fileSha = data.sha;
                 db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
+                
+                // MIGRATION LOGIC: Convert [name, spec] to {name, spec, phone}
+                db.names = db.names.map(entry => {
+                    if (Array.isArray(entry)) return { name: entry[0], spec: entry[1], phone: "" };
+                    return entry;
+                });
+                
                 renderResidents();
             }
-        } catch (e) { console.error(e); alert("Failed to connect to GitHub."); }
-        finally { toggleLoader(false); }
+        } catch (e) { console.error(e); }
+        document.body.classList.remove('is-loading');
     }
 
     function renderResidents() {
         const list = document.getElementById('resident-list');
-        const countTag = document.getElementById('count-tag');
         const searchTerm = document.getElementById('search-db').value.toLowerCase();
         list.innerHTML = "";
         
-        let totalVisible = 0;
         const grouped = {};
         specialties.forEach(s => grouped[s.id] = []);
         
-        // Filter and Group
         db.names.forEach((res, originalIndex) => {
-            if (res[0].toLowerCase().includes(searchTerm)) {
-                grouped[res[1]]?.push({ name: res[0], id: res[1], idx: originalIndex });
-                totalVisible++;
+            if (res.name.toLowerCase().includes(searchTerm)) {
+                grouped[res.spec]?.push({ ...res, idx: originalIndex });
             }
         });
 
-        countTag.innerText = `${totalVisible} REGISTERED`;
-
-        // Render Groups
         specialties.forEach(spec => {
             const residents = grouped[spec.id];
             if (residents.length === 0) return;
-
             residents.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
 
             const header = document.createElement('div');
-            header.className = "spec-header px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-amber-500 flex justify-between";
+            header.className = "spec-header px-5 py-2 text-[9px] font-black uppercase text-amber-500/80 flex justify-between";
             header.innerHTML = `<span>${spec.name}</span><span>${residents.length}</span>`;
             list.appendChild(header);
 
@@ -154,84 +130,73 @@
                 const row = document.createElement('div');
                 row.className = "resident-row px-5 py-4 flex justify-between items-center";
                 row.innerHTML = `
-                    <span class="text-white font-bold text-sm">${res.name}</span>
+                    <div class="flex flex-col">
+                        <span class="text-white font-bold text-sm">${res.name}</span>
+                        <span class="text-[10px] text-slate-500 font-mono">${res.phone || 'No Phone Registered'}</span>
+                    </div>
                     <div class="flex gap-2">
-                        <button onclick="editResident(${res.idx})" class="text-[9px] font-black text-blue-400 hover:text-white uppercase tracking-tighter px-3 py-1.5 border border-blue-400/20 rounded-lg transition-all">Edit</button>
-                        <button onclick="deleteResident(${res.idx})" class="text-[9px] font-black text-red-400 hover:text-white uppercase tracking-tighter px-3 py-1.5 border border-red-400/20 rounded-lg transition-all">Delete</button>
+                        <button onclick="editResident(${res.idx})" class="text-[9px] font-bold text-blue-400 uppercase px-3 py-1.5 border border-blue-400/20 rounded-lg">Edit</button>
+                        <button onclick="deleteResident(${res.idx})" class="text-[9px] font-bold text-red-400 uppercase px-3 py-1.5 border border-red-400/20 rounded-lg">Delete</button>
                     </div>
                 `;
                 list.appendChild(row);
             });
         });
+        document.getElementById('count-tag').innerText = `${db.names.length} Total`;
     }
 
     function addResident() {
-        const nameInput = document.getElementById('new-name');
-        const specInput = document.getElementById('new-spec');
-        const name = nameInput.value.trim();
+        const name = document.getElementById('new-name').value.trim();
+        const phone = document.getElementById('new-phone').value.trim();
+        const spec = document.getElementById('new-spec').value;
         if (!name) return;
-        
-        db.names.push([name, specInput.value]);
-        nameInput.value = "";
+        db.names.push({ name, spec, phone });
+        document.getElementById('new-name').value = "";
+        document.getElementById('new-phone').value = "";
         renderResidents();
     }
 
-    function deleteResident(index) {
-        if (confirm(`Remove ${db.names[index][0]} from database?`)) {
-            db.names.splice(index, 1);
+    function editResident(index) {
+        const res = db.names[index];
+        const newName = prompt("Edit Name:", res.name);
+        const newPhone = prompt("Edit Phone:", res.phone || "");
+        if (newName !== null) {
+            db.names[index].name = newName.trim();
+            db.names[index].phone = (newPhone !== null) ? newPhone.trim() : res.phone;
             renderResidents();
         }
     }
 
-    function editResident(index) {
-        const currentName = db.names[index][0];
-        const newName = prompt(`Edit name for resident:`, currentName);
-        if (newName && newName.trim() !== "") {
-            db.names[index][0] = newName.trim();
+    function deleteResident(idx) {
+        if (confirm(`Remove ${db.names[idx].name}?`)) {
+            db.names.splice(idx, 1);
             renderResidents();
         }
     }
 
     async function saveToGithub() {
         const btn = document.getElementById('save-btn');
-        const originalText = btn.innerText;
-        btn.innerText = "UPLOADING...";
-        btn.disabled = true;
-        toggleLoader(true);
-
+        btn.innerText = "Saving...";
+        document.body.classList.add('is-loading');
         try {
-            // Sorting schedule before save for organization
-            db.schedule.sort((a, b) => {
-                const [da, ma, ya] = a.date.split('/').map(Number);
-                const [db, mb, yb] = b.date.split('/').map(Number);
-                return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
-            });
-
             const body = { 
-                message: "Update Resident Database 🇮🇶", 
+                message: "Update Database (Incl. Phone Numbers) 🇮🇶", 
                 content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
                 sha: fileSha 
             };
-            
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
                 method: "PUT",
                 headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" },
                 body: JSON.stringify(body)
             });
-            
             if (res.ok) {
                 const updated = await res.json();
                 fileSha = updated.content.sha;
-                alert("Database updated and organized! ✅");
-            } else {
-                alert("GitHub Error: Could not save changes.");
+                alert("Saved Successfully! ✅");
             }
-        } catch (e) { alert("Network Error: Save failed."); }
-        finally {
-            btn.innerText = originalText;
-            btn.disabled = false;
-            toggleLoader(false);
-        }
+        } catch (e) { alert("Error saving."); }
+        btn.innerText = "Save to GH";
+        document.body.classList.remove('is-loading');
     }
 </script>
 </body>
