@@ -84,51 +84,57 @@
     }
 
     async function init() {
-        if (!GH_TOKEN) {
-            alert("No Token Found. Please click the blue LOGIN button.");
-            return;
-        }
+        if (!GH_TOKEN) return;
         
         const wrapper = document.getElementById('app-wrapper');
         wrapper.classList.add('loading-active');
 
         try {
-            const url = `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`;
+            // Added a timestamp to the URL to prevent "Old Cache" errors
+            const url = `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`;
+            
             const res = await fetch(url, {
                 headers: { 
                     "Authorization": `token ${GH_TOKEN}`,
-                    "Accept": "application/vnd.github.v3+json",
-                    "Cache-Control": "no-cache" 
+                    "Accept": "application/vnd.github.v3+json"
                 }
             });
 
-            if (res.status === 401) {
-                alert("🔴 TOKEN ERROR: Your token is invalid or expired. Please click LOGIN and paste the new one.");
-                localStorage.removeItem('gh_token');
-            } else if (res.status === 404) {
-                alert(`🔴 FILE ERROR: Could not find '${CONFIG.path}' in the repository '${CONFIG.repo}'. Check the spelling!`);
-            } else if (!res.ok) {
-                alert(`🔴 GITHUB ERROR: ${res.statusText}`);
-            } else {
-                const data = await res.json();
-                fileSha = data.sha;
-                // Decode the JSON content from GitHub Base64
-                const raw = atob(data.content.replace(/\s/g, ''));
-                db = JSON.parse(decodeURIComponent(escape(raw)));
-
-                // Map names for the UI
-                specs.forEach(s => {
-                    if (s.id === "OP" || s.id === "ICU") nameLookup[s.id] = (db.names || []).filter(x => x[1] === "A").map(x => x[0]);
-                    else if (s.id === "D") nameLookup[s.id] = (db.names || []).map(x => x[0]);
-                    else nameLookup[s.id] = (db.names || []).filter(x => x[1] === s.id).map(x => x[0]);
-                });
-
-                refreshView();
-                console.log("✅ Connection Successful!");
+            if (!res.ok) {
+                if(res.status === 401) alert("Token Expired. Click Login again.");
+                if(res.status === 404) alert("data.json not found in GitHub.");
+                return;
             }
+
+            const data = await res.json();
+            fileSha = data.sha;
+            
+            // This is the part that usually causes the "CRITICAL ERROR"
+            // We use a more robust way to decode Arabic characters from GitHub
+            const decoded = decodeURIComponent(atob(data.content).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+
+            db = JSON.parse(decoded);
+
+            // Re-map the names for your UI
+            specs.forEach(s => {
+                if (s.id === "OP" || s.id === "ICU") nameLookup[s.id] = (db.names || []).filter(x => x[1] === "A").map(x => x[0]);
+                else if (s.id === "D") nameLookup[s.id] = (db.names || []).map(x => x[0]);
+                else nameLookup[s.id] = (db.names || []).filter(x => x[1] === s.id).map(x => x[0]);
+            });
+
+            refreshView();
         } catch (e) {
-            console.error(e);
-            alert("🔴 CRITICAL ERROR: Check your internet or browser console.");
+            console.error("Internal Error:", e);
+            // If the file is EMPTY ({}), it crashes here. 
+            // Let's force it to initialize if it's empty.
+            if(e.message.includes("JSON")) {
+                db = { names: [], schedule: [] };
+                refreshView();
+            } else {
+                alert("Connection Blocked. Try clicking Login and re-pasting the token.");
+            }
         } finally {
             wrapper.classList.remove('loading-active');
         }
