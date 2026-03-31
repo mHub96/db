@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HOSPITAL SCHEDULER 🇮🇶</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #0b0e11; --card: #16191d; --column-width: 300px; --nav-h: 70px; }
+        :root { --bg: #0b0e11; --card: #16191d; --column-width: 290px; --font-size: 0.9rem; --nav-h: 70px; }
         .track-NS { --spec-color: #fbbf24; } .track-CT { --spec-color: #f87171; } 
         .track-GS { --spec-color: #34d399; } .track-US { --spec-color: #60a5fa; } 
         .track-ENT { --spec-color: #a78bfa; } .track-H { --spec-color: #fb7185; } 
@@ -16,32 +16,39 @@
         .track-ON { --spec-color: #f472b6; } 
 
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: #94a3b8; margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-        .board-container { flex-grow: 1; display: flex; gap: 1rem; padding: 1.2rem; overflow-x: auto; align-items: flex-start; }
-        .specialty-track { flex: 0 0 var(--column-width); background: var(--card); border-radius: 1.5rem; display: flex; flex-direction: column; max-height: 95%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .track-header { padding: 1rem; text-align: center; border-bottom: 3px solid var(--spec-color); }
-        .track-header h2 { color: var(--spec-color); font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
-        .days-list { flex: 1; overflow-y: auto; padding: 0.6rem; scrollbar-width: none; }
-        .day-box { background: rgba(255,255,255,0.02); margin-bottom: 0.5rem; border-radius: 0.9rem; padding: 0.6rem; border: 1px solid transparent; }
-        .day-box.weekend { background: rgba(255,255,255,0.07); border-left: 4px solid var(--spec-color); }
-        .day-label { display: flex; justify-content: space-between; font-size: 0.65rem; font-weight: 700; color: #64748b; margin-bottom: 4px; }
+        .board-container { flex-grow: 1; display: flex; gap: 1.5rem; padding: 1.5rem 1.5rem 3rem 1.5rem; overflow-x: auto; align-items: flex-start; box-sizing: border-box; height: calc(100vh - var(--nav-h)); }
+        .specialty-track { flex: 0 0 var(--column-width); background: var(--card); border-radius: 1.8rem; display: flex; flex-direction: column; max-height: 92%; border: 1px solid rgba(255,255,255,0.04); box-shadow: 0 20px 40px -15px rgba(0,0,0,0.8), 0 0 15px -5px var(--spec-color); overflow: hidden; }
+        .track-header { padding: 1.2rem; text-align: center; flex-shrink: 0; background: linear-gradient(to bottom, rgba(255,255,255,0.03), transparent); border-bottom: 3px solid var(--spec-color); }
+        .track-header h2 { color: var(--spec-color); font-weight: 900; font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; }
+        .days-list { flex: 1; overflow-y: auto; padding: 0.75rem; padding-bottom: 2rem; scrollbar-width: none; }
+        .day-box { position: relative; background: rgba(255,255,255,0.02); margin-bottom: 0.5rem; border-radius: 0.9rem; padding: 0.4rem; border: 1px solid transparent; }
+        .day-box:focus-within { border-color: var(--spec-color); background: rgba(255,255,255,0.04); }
+        .day-box.weekend { background: rgba(255,255,255,0.05); border-left: 3px solid var(--spec-color); }
+        .day-label { display: flex; justify-content: space-between; font-size: 0.6rem; font-weight: 800; margin-bottom: 0.2rem; color: #4b5563; padding: 0 0.5rem; }
         .input-wrapper { position: relative; width: 100%; direction: rtl; }
-        .cell-input { width: 100%; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: 0.95rem; padding: 0.5rem; text-align: right; background: transparent; border: none; outline: none; color: #fff; }
-        .ghost-text { position: absolute; top: 0; right: 0; color: rgba(255,255,255,0.15); pointer-events: none; height: 100%; width: 100%; display: flex; align-items: center; padding-right: 0.5rem; text-align: right; direction: rtl; }
+        .cell-input, .ghost-text { width: 100%; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: var(--font-size); padding: 0.6rem 0.75rem; text-align: right; box-sizing: border-box; }
+        .cell-input { background: transparent; border: none; outline: none; color: #fff; position: relative; z-index: 10; }
+        .ghost-text { position: absolute; top: 0; right: 0; color: rgba(255,255,255,0.1); z-index: 5; pointer-events: none; height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 0.75rem; }
+        .dropdown-arrow { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.5rem; color: #334155; cursor: pointer; z-index: 25; padding: 6px; }
+        .custom-menu { position: absolute; top: 100%; right: 0; width: 100%; max-height: 180px; overflow-y: auto; background: #1c1f26; border: 1px solid var(--spec-color); border-radius: 0.6rem; z-index: 1000; display: none; }
+        .custom-menu div { padding: 0.8rem; font-size: 0.8rem; text-align: right; cursor: pointer; color: #94a3b8; }
+        .custom-menu div:hover { background: var(--spec-color); color: #000; }
         .prefilled { color: var(--spec-color) !important; font-weight: 600; }
-        .nav-bar { height: var(--nav-h); padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; background: #111418; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .loading-active { opacity: 0.4; pointer-events: none; cursor: wait; }
+        .new-entry { color: #fff !important; font-weight: 700; }
+        .nav-bar { height: var(--nav-h); padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; background: #111418; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .loading-active { opacity: 0.3 !important; pointer-events: none !important; cursor: wait; }
     </style>
 </head>
 <body>
 
-    <div id="app-wrapper">
+    <div id="app-wrapper" class="loading-active">
         <div class="nav-bar">
-            <h1 class="text-white font-black text-sm tracking-tight uppercase">Teaching Hosp. Scheduler 🇮🇶</h1>
-            <div class="flex gap-2">
-                <input type="month" id="month-picker" class="bg-black text-amber-500 px-3 py-1.5 rounded-lg border border-white/10 text-xs font-bold" onchange="refreshView()">
-                <button onclick="saveToGithub()" id="sync-btn" class="bg-white text-black px-4 py-1.5 rounded-lg font-black text-[10px] uppercase hover:bg-amber-400 transition-colors">Sync</button>
-                <button onclick="migrateFromGoogle()" id="migrate-btn" class="bg-green-600 text-white px-4 py-1.5 rounded-lg font-black text-[10px] uppercase hover:bg-green-500">Migrate</button>
-                <button onclick="login()" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg font-black text-[10px] uppercase hover:bg-blue-500">Login</button>
+            <h1 class="text-lg font-black text-white uppercase tracking-tighter">Teaching Hosp. Scheduler 🇮🇶</h1>
+            <div class="flex gap-4 items-center">
+                <input type="month" id="month-picker" class="bg-black text-amber-500 px-3 py-1.5 rounded-lg font-bold border border-white/10 text-xs">
+                <button onclick="saveToGithub()" id="sync-btn" class="bg-white text-black px-5 py-2 rounded-lg font-black text-[10px] uppercase active:scale-95 transition-transform">Sync Schedule</button>
+                <button onclick="migrateFromGoogle()" id="migrate-btn" class="bg-green-600 text-white px-5 py-2 rounded-lg font-black text-[10px] uppercase">Migrate</button>
+                <button onclick="login()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-black text-[10px] uppercase">Login</button>
             </div>
         </div>
         <div class="board-container" id="board"></div>
@@ -49,19 +56,17 @@
 
 <script>
     const CONFIG = {
-        user: "mHub96",
-        repo: "db",
-        path: "data.json",
+        user: "mHub96", repo: "db", path: "data.json",
         rawUrl: "https://raw.githubusercontent.com/mHub96/db/main/data.json",
-        googleUrl: "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec"
+        scriptUrl: "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec"
     };
 
     let GH_TOKEN = localStorage.getItem('gh_token');
     let db = { names: [], schedule: [] };
     let fileSha = "";
-    let nameLookup = {};
+    let nameData = {};
 
-    const specs = [
+    const specialties = [
         { id: "NS", name: "Neurosurgery" }, { id: "CT", name: "Cardiothoracic" },
         { id: "GS", name: "General Surg" }, { id: "US", name: "Urosurgery" },
         { id: "ENT", name: "ENT Dept" }, { id: "H", name: "Cardiology" },
@@ -70,18 +75,16 @@
         { id: "ON", name: "Oncology" }
     ];
 
-    window.onload = () => {
+    window.onload = async () => {
         const d = new Date();
         document.getElementById('month-picker').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        init();
+        document.getElementById('month-picker').onchange = refreshView;
+        await init();
     };
 
     function login() {
         const t = prompt("Paste your GitHub Token 🇮🇶:");
-        if (t) { 
-            localStorage.setItem('gh_token', t.trim()); 
-            location.reload(); 
-        }
+        if (t) { localStorage.setItem('gh_token', t.trim()); location.reload(); }
     }
 
     async function init() {
@@ -91,29 +94,27 @@
                 const res = await fetch(`${CONFIG.rawUrl}?t=${Date.now()}`);
                 db = await res.json();
             } else {
-                const url = `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`;
-                const res = await fetch(url, {
+                const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`, {
                     headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" }
                 });
                 if (res.ok) {
                     const data = await res.json();
                     fileSha = data.sha;
-                    const raw = atob(data.content.replace(/\s/g, ''));
-                    db = JSON.parse(decodeURIComponent(escape(raw)));
+                    db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
                 }
             }
             updateNameLookup();
             refreshView();
-        } catch (e) { console.error("Init failed:", e); }
+        } catch (e) { console.error("Init Error", e); }
         document.getElementById('app-wrapper').classList.remove('loading-active');
     }
 
     function updateNameLookup() {
-        specs.forEach(s => {
-            const allNames = db.names || [];
-            if (s.id === "OP" || s.id === "ICU") nameLookup[s.id] = allNames.filter(x => x[1] === "A").map(x => x[0]);
-            else if (s.id === "D") nameLookup[s.id] = allNames.map(x => x[0]);
-            else nameLookup[s.id] = allNames.filter(x => x[1] === s.id).map(x => x[0]);
+        specialties.forEach(s => {
+            const all = db.names || [];
+            if (s.id === "OP" || s.id === "ICU") nameData[s.id] = all.filter(x => x[1] === "A").map(x => x[0]);
+            else if (s.id === "D") nameData[s.id] = all.map(x => x[0]);
+            else nameData[s.id] = all.filter(x => x[1] === s.id).map(x => x[0]);
         });
     }
 
@@ -125,27 +126,35 @@
     function generateBoard() {
         const [yr, mon] = document.getElementById('month-picker').value.split('-').map(Number);
         const days = new Date(yr, mon, 0).getDate();
-        const container = document.getElementById('board');
-        container.innerHTML = "";
+        const board = document.getElementById('board');
+        board.innerHTML = "";
 
-        specs.forEach(s => {
+        specialties.forEach(spec => {
             const track = document.createElement('div');
-            track.className = `specialty-track track-${s.id}`;
-            let html = `<div class="track-header"><h2>${s.name}</h2></div><div class="days-list">`;
+            track.className = `specialty-track track-${spec.id}`;
+            let html = `<div class="track-header"><h2>${spec.name}</h2></div><div class="days-list">`;
             for (let d = 1; d <= days; d++) {
                 const dateObj = new Date(yr, mon - 1, d);
-                const isWE = dateObj.getDay() === 5 || dateObj.getDay() === 6;
-                const dateStr = `${String(d).padStart(2, '0')}/${String(mon).padStart(2, '0')}/${yr}`;
-                const id = `${d}-${s.id}`;
-                html += `<div class="day-box ${isWE ? 'weekend' : ''}">
-                    <div class="day-label"><span>${dateStr.substring(0,5)}</span><span>${new Intl.DateTimeFormat('ar-IQ', {weekday:'short'}).format(dateObj)}</span></div>
-                    <div class="input-wrapper">
-                        <div class="ghost-text" id="ghost-${id}"></div>
-                        <input type="text" class="cell-input" id="input-${id}" oninput="doAC(this, '${s.id}', '${id}')" onkeydown="doKey(event, this, '${id}')" data-date="${dateStr}" data-spec="${s.id}" autocomplete="off">
-                    </div></div>`;
+                const dayName = new Intl.DateTimeFormat('ar-IQ', { weekday: 'short' }).format(dateObj);
+                const dateFull = `${String(d).padStart(2, '0')}/${String(mon).padStart(2, '0')}/${yr}`;
+                const uid = `${d}-${spec.id}`;
+                html += `
+                    <div class="day-box ${dateObj.getDay() === 5 || dateObj.getDay() === 6 ? 'weekend' : ''}">
+                        <div class="day-label"><span>${dateFull.substring(0,5)}</span><span>${dayName}</span></div>
+                        <div class="input-wrapper">
+                            <div class="ghost-text" id="ghost-${uid}"></div>
+                            <input type="text" class="cell-input" id="input-${uid}" 
+                                oninput="handleAC(this, '${spec.id}', '${uid}')"
+                                onkeydown="handleKeys(event, this, '${uid}')"
+                                onblur="handleBlur('${uid}')"
+                                data-date="${dateFull}" data-spec="${spec.id}" autocomplete="off">
+                            <span class="dropdown-arrow" onclick="toggleMenu(event, '${uid}', '${spec.id}')">▼</span>
+                            <div class="custom-menu" id="menu-${uid}"></div>
+                        </div>
+                    </div>`;
             }
             track.innerHTML = html + `</div>`;
-            container.appendChild(track);
+            board.appendChild(track);
         });
     }
 
@@ -154,69 +163,98 @@
         (db.schedule || []).forEach(row => {
             if (row.date.endsWith(`${mon}/${yr}`)) {
                 const day = parseInt(row.date.split('/')[0]);
-                const input = document.getElementById(`input-${day}-${row.specCode}`);
-                if (input) { 
-                    input.value = row.name; 
-                    input.classList.add('prefilled');
-                }
+                const el = document.getElementById(`input-${day}-${row.specCode}`);
+                if (el) { el.value = row.name; el.classList.add('prefilled'); }
             }
         });
     }
 
-    function doAC(el, sid, id) {
-        const ghost = document.getElementById(`ghost-${id}`);
-        const val = el.value.trim();
-        ghost.innerText = ""; delete el.dataset.match;
-        if (!val || !nameLookup[sid]) return;
-        const found = nameLookup[sid].find(n => n.toLowerCase().includes(val.toLowerCase()));
-        if (found) { ghost.innerText = found; el.dataset.match = found; }
-    }
-
-    function doKey(e, el, id) {
-        if (e.key === "Enter" && el.dataset.match) {
-            el.value = el.dataset.match;
-            el.classList.add('prefilled');
-            document.getElementById(`ghost-${id}`).innerText = "";
+    function handleAC(el, sid, uid) {
+        const ghost = document.getElementById(`ghost-${uid}`);
+        const val = el.value;
+        ghost.innerText = ""; ghost.removeAttribute('data-full');
+        el.classList.remove('prefilled');
+        if (!val.trim()) return;
+        if (nameData[sid]) {
+            const cleanInput = val.toLowerCase().replace(/^د\.\s*/, "");
+            const match = nameData[sid].find(n => {
+                const nLower = n.toLowerCase();
+                return nLower.startsWith(val.toLowerCase()) || nLower.replace(/^د\.\s*/, "").startsWith(cleanInput);
+            });
+            if (match) {
+                ghost.setAttribute('data-full', match);
+                let display = val.startsWith("د.") ? match : match.replace(/^د\.\s*/, "");
+                ghost.innerText = display;
+            }
         }
     }
 
+    function handleKeys(e, el, uid) {
+        const ghost = document.getElementById(`ghost-${uid}`);
+        const full = ghost.getAttribute('data-full');
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (full) { el.value = full; el.classList.add('new-entry'); ghost.innerText = ""; }
+            const [d, sid] = uid.split('-');
+            const nextEl = document.getElementById(`input-${parseInt(d) + 1}-${sid}`);
+            if (nextEl) { nextEl.focus(); nextEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+            else el.blur();
+        }
+    }
+
+    function toggleMenu(e, uid, sid) {
+        e.stopPropagation();
+        const m = document.getElementById(`menu-${uid}`);
+        const open = m.style.display === "block";
+        document.querySelectorAll('.custom-menu').forEach(x => x.style.display = 'none');
+        if (!open) {
+            m.innerHTML = (nameData[sid] || []).map(n => `<div onmousedown="selectName('${uid}', '${n}')">${n}</div>`).join('');
+            m.style.display = "block";
+        }
+    }
+
+    function selectName(uid, name) {
+        const i = document.getElementById(`input-${uid}`);
+        i.value = name; i.classList.add('new-entry');
+        document.getElementById(`ghost-${uid}`).innerText = "";
+        document.getElementById(`menu-${uid}`).style.display = 'none';
+    }
+
+    function handleBlur(uid) {
+        setTimeout(() => {
+            const m = document.getElementById(`menu-${uid}`);
+            if (m) m.style.display = 'none';
+            document.getElementById(`ghost-${uid}`).innerText = "";
+        }, 250);
+    }
+
     async function migrateFromGoogle() {
-        if (!GH_TOKEN) return alert("Login first! 🇮🇶");
-        const btn = document.getElementById('migrate-btn');
-        btn.innerText = "MIGRATING...";
+        if (!GH_TOKEN) return alert("Login first!");
         try {
-            const res = await fetch(`${CONFIG.googleUrl}?action=migrate`);
-            const result = await res.json();
-            db.names = result.names;
-            db.schedule = result.schedule;
+            const r = await fetch(`${CONFIG.scriptUrl}?action=migrate`);
+            const res = await r.json();
+            db.names = res.names; db.schedule = res.schedule;
             await saveToGithub();
-            alert("Success! 🇮🇶");
             location.reload();
-        } catch (e) { alert("Error: " + e.message); }
-        btn.innerText = "Migrate";
+        } catch(e) { alert("Migration failed"); }
     }
 
     async function saveToGithub() {
         if (!GH_TOKEN) return alert("Login first!");
         const btn = document.getElementById('sync-btn');
-        btn.innerText = "...";
+        btn.innerText = "Syncing...";
         const inputs = Array.from(document.querySelectorAll('.cell-input')).filter(i => i.value.trim() !== "");
         const currentData = inputs.map(i => ({ date: i.dataset.date, specCode: i.dataset.spec, name: i.value.trim() }));
         const [yr, mon] = document.getElementById('month-picker').value.split('-');
         db.schedule = [...(db.schedule || []).filter(r => !r.date.endsWith(`${mon}/${yr}`)), ...currentData];
         try {
+            const body = { message: "Sync 🇮🇶", content: btoa(unescape(encodeURIComponent(JSON.stringify(db)))), sha: fileSha };
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
-                method: "PUT",
-                headers: { "Authorization": `token ${GH_TOKEN}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ message: "Sync 🇮🇶", content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), sha: fileSha })
+                method: "PUT", headers: { "Authorization": `token ${GH_TOKEN}` }, body: JSON.stringify(body)
             });
-            if (res.ok) {
-                const r = await res.json();
-                fileSha = r.content.sha;
-                btn.innerText = "OK ✅";
-            }
-        } catch(e) { btn.innerText = "ERR"; }
-        setTimeout(() => btn.innerText = "Sync", 2000);
+            if (res.ok) btn.innerText = "Synced ✅";
+        } catch(e) { btn.innerText = "Error"; }
+        setTimeout(() => btn.innerText = "Sync Schedule", 2000);
     }
 </script>
 </body>
