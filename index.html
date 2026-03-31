@@ -174,23 +174,41 @@
     }
 
     async function migrateFromGoogle() {
-        if (!GH_TOKEN) return alert("Login with GitHub first! 🇮🇶");
-        const btn = document.getElementById('migrate-btn');
-        btn.innerText = "WAIT...";
-        try {
-            const m = document.getElementById('month-picker').value;
-            const [nRes, sRes] = await Promise.all([
-                fetch(`${CONFIG.googleUrl}?action=getNames`),
-                fetch(`${CONFIG.googleUrl}?action=getSchedule&month=${m}`)
-            ]);
-            db.names = await nRes.json();
-            db.schedule = await sRes.json();
-            await saveToGithub();
-            alert("Migration Complete! 🇮🇶");
-            location.reload();
-        } catch (e) { alert("Migration Error: " + e.message); }
-        btn.innerText = "Migrate";
+    if (!GH_TOKEN) return alert("Please Login first! 🇮🇶");
+    
+    const btn = document.getElementById('migrate-btn');
+    const originalText = btn.innerText;
+    btn.innerText = "MIGRATING... ⏳";
+    
+    try {
+        // This calls the specific migration route we just fixed in your Apps Script
+        const res = await fetch(`${CONFIG.googleUrl}?action=migrate`);
+        const result = await res.json();
+
+        if (result.error) {
+            throw new Error(result.error);
+        }
+
+        // result.names contains all columns (Name, Code, Phone, etc.)
+        // result.schedule contains all rows from the SCHEDULE sheet
+        db.names = result.names;
+        db.schedule = result.schedule;
+
+        console.log("Migration successful, saving to GitHub...", db);
+
+        // Save the combined data to your GitHub data.json
+        await saveToGithub();
+        
+        alert("Success! Everything (Names, Phones, and Schedule) is now on GitHub. 🇮🇶");
+        location.reload();
+
+    } catch (e) {
+        console.error("Migration Error:", e);
+        alert("Migration failed: " + e.message);
+    } finally {
+        btn.innerText = originalText;
     }
+}
 
     async function saveToGithub() {
         if (!GH_TOKEN) return alert("Login first!");
