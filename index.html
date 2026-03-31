@@ -34,7 +34,6 @@
         
         .day-label { display: flex; justify-content: space-between; font-size: 0.6rem; font-weight: 800; margin-bottom: 0.2rem; color: #4b5563; padding: 0 0.5rem; }
         
-        /* RTL ALIGNMENT FIX 🇮🇶 */
         .input-wrapper { position: relative; width: 100%; direction: rtl; text-align: right; }
 
         .cell-input, .ghost-text { 
@@ -43,7 +42,6 @@
             font-size: var(--font-size); 
             padding: 0.6rem 0.75rem; 
             line-height: 1.2;
-            letter-spacing: 0;
             text-align: right; 
             box-sizing: border-box; 
             white-space: pre;
@@ -112,7 +110,6 @@
     ];
 
     window.onload = async () => {
-        // MECHANIC: Auto-load Next Month
         const now = new Date();
         const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         document.getElementById('month-picker').value = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
@@ -120,7 +117,6 @@
         await init();
     };
 
-    // MECHANIC: Close menus on outside click
     window.onclick = (e) => {
         if (!e.target.classList.contains('dropdown-arrow') && !e.target.closest('.custom-menu')) {
             closeAllMenus();
@@ -139,18 +135,27 @@
     async function init() {
         document.getElementById('app-wrapper').classList.add('loading-active');
         try {
-            if (!GH_TOKEN) {
-                const res = await fetch(`${CONFIG.rawUrl}?t=${Date.now()}`);
-                db = await res.json();
-            } else {
-                const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`, {
-                    headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" }
-                });
-                if (res.ok) {
-                    const data = await res.json();
+            const fetchUrl = GH_TOKEN 
+                ? `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`
+                : `${CONFIG.rawUrl}?t=${Date.now()}`;
+            
+            const headers = GH_TOKEN ? { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" } : {};
+            
+            const res = await fetch(fetchUrl, { headers });
+            if (res.ok) {
+                const data = await res.json();
+                if (GH_TOKEN) {
                     fileSha = data.sha;
                     db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
+                } else {
+                    db = data;
                 }
+                
+                // FORCE NORMALIZATION: Ensure all names are objects
+                db.names = (db.names || []).map(item => {
+                    if (Array.isArray(item)) return { name: item[0], spec: item[1] || "NS", phone: "" };
+                    return item;
+                });
             }
             updateNameLookup();
             refreshView();
@@ -159,11 +164,16 @@
     }
 
     function updateNameLookup() {
+        nameData = {};
+        const allResidents = db.names || [];
         specialties.forEach(s => {
-            const all = db.names || [];
-            if (s.id === "OP" || s.id === "ICU") nameData[s.id] = all.filter(x => x[1] === "A").map(x => x[0]);
-            else if (s.id === "D") nameData[s.id] = all.map(x => x[0]);
-            else nameData[s.id] = all.filter(x => x[1] === s.id).map(x => x[0]);
+            if (s.id === "OP" || s.id === "ICU") {
+                nameData[s.id] = allResidents.filter(x => x.spec === "A").map(x => x.name);
+            } else if (s.id === "D") {
+                nameData[s.id] = allResidents.map(x => x.name);
+            } else {
+                nameData[s.id] = allResidents.filter(x => x.spec === s.id).map(x => x.name);
+            }
         });
     }
 
@@ -211,7 +221,7 @@
     function renderData() {
         const [yr, mon] = document.getElementById('month-picker').value.split('-');
         (db.schedule || []).forEach(row => {
-            if (row.date.endsWith(`${mon}/${yr}`)) {
+            if (row.date && row.date.endsWith(`${mon}/${yr}`)) {
                 const day = parseInt(row.date.split('/')[0]);
                 const el = document.getElementById(`input-${day}-${row.specCode}`);
                 if (el) { el.value = row.name; el.classList.add('prefilled'); }
@@ -229,8 +239,8 @@
 
         if (nameData[sid]) {
             const match = nameData[sid].find(n => {
-                const nClean = n.toLowerCase().replace(/^د\.\s*/, "");
-                const valClean = val.toLowerCase().replace(/^د\.\s*/, "");
+                const nClean = n.toLowerCase().replace(/^د\.\s*/, "").trim();
+                const valClean = val.toLowerCase().replace(/^د\.\s*/, "").trim();
                 return n.toLowerCase().startsWith(val.toLowerCase()) || nClean.startsWith(valClean);
             });
             if (match) {
@@ -304,9 +314,15 @@
         const inputs = Array.from(document.querySelectorAll('.cell-input')).filter(i => i.value.trim() !== "");
         const currentData = inputs.map(i => ({ date: i.dataset.date, specCode: i.dataset.spec, name: i.value.trim() }));
         const [yr, mon] = document.getElementById('month-picker').value.split('-');
+        
         db.schedule = [...(db.schedule || []).filter(r => !r.date.endsWith(`${mon}/${yr}`)), ...currentData];
+        
         try {
-            const body = { message: "Sync 🇮🇶", content: btoa(unescape(encodeURIComponent(JSON.stringify(db)))), sha: fileSha };
+            const body = { 
+                message: "Sync 🇮🇶", 
+                content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
+                sha: fileSha 
+            };
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
                 method: "PUT", headers: { "Authorization": `token ${GH_TOKEN}` }, body: JSON.stringify(body)
             });
