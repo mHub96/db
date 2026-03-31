@@ -19,19 +19,25 @@
             background: #000 !important; border: 1px solid #334155 !important; 
             color: white !important; outline: none !important; text-align: right;
         }
+        
+        /* Modal */
         #edit-modal { display: none; position: fixed; inset: 0; z-index: 3000; align-items: center; justify-content: center; padding: 1rem; }
         #edit-modal.active { display: flex; }
         .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); }
-        .modal-content { position: relative; width: 100%; max-width: 400px; background: #1c2128; border-radius: 1.5rem; padding: 1.5rem; }
+        .modal-content { position: relative; width: 100%; max-width: 400px; background: #1c2128; border-radius: 1.5rem; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* Rows */
         .resident-row { border-bottom: 1px solid rgba(255,255,255,0.02); display: flex; justify-content: space-between; align-items: center; }
         .spec-header { background: rgba(255,255,255,0.03); padding: 0.6rem 1.25rem; font-size: 0.7rem; font-weight: 900; color: var(--accent); display: flex; justify-content: space-between; }
-        .loading-overlay { position: fixed; inset: 0; background: rgba(11,14,17,0.9); z-index: 4000; display: none; align-items: center; justify-content: center; }
-        .is-loading .loading-overlay { display: flex; }
+        
+        /* Status States for Save Button */
+        .btn-save { transition: all 0.3s ease; }
+        .btn-save.loading { background: #2563eb !important; color: white; cursor: not-allowed; opacity: 0.8; }
+        .btn-save.success { background: #10b981 !important; color: white; }
+        .btn-save.error { background: #ef4444 !important; color: white; }
     </style>
 </head>
 <body class="pb-20">
-
-    <div id="loader" class="loading-overlay"><div class="text-white font-black animate-pulse">جاري التحميل...</div></div>
 
     <div id="edit-modal">
         <div class="modal-overlay" onclick="closeModal()"></div>
@@ -63,9 +69,9 @@
         <div class="flex justify-between items-center py-6 sticky top-0 bg-[#0b0e11] z-10">
             <div>
                 <h1 class="text-2xl font-black text-white">إدارة المقيمين 🇮🇶</h1>
-                <p id="count-tag" class="text-[10px] font-bold text-amber-500 uppercase">العدد: 0</p>
+                <p id="count-tag" class="text-[10px] font-bold text-amber-500 uppercase tracking-widest">جاري التحميل...</p>
             </div>
-            <button onclick="saveToGithub()" class="bg-amber-500 text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase">حفظ السحابة</button>
+            <button id="main-save-btn" onclick="saveToGithub()" class="btn-save bg-amber-500 text-black px-5 py-2.5 rounded-xl text-[11px] font-black uppercase shadow-lg active:scale-95">حفظ السحابة</button>
         </div>
 
         <div class="card p-5 mb-6">
@@ -85,15 +91,15 @@
                         <option value="ON">Oncology</option>
                     </select>
                 </div>
-                <button onclick="addResident()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-sm">إضافة مقيم جديد</button>
+                <button onclick="addResident()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-sm active:bg-blue-700">إضافة مقيم جديد</button>
             </div>
         </div>
 
         <div class="card overflow-hidden">
             <div class="p-3 bg-white/5 border-b border-white/5">
-                <input type="text" id="search-db" oninput="renderResidents()" placeholder="بحث سريع..." class="w-full p-3 px-4 rounded-lg text-sm !bg-black border-none text-white">
+                <input type="text" id="search-db" oninput="renderResidents()" placeholder="بحث سريع عن الأسماء..." class="w-full p-3 px-4 rounded-xl text-sm !bg-black border-none text-white focus:ring-1 focus:ring-amber-500/50">
             </div>
-            <div id="resident-list"></div>
+            <div id="resident-list" class="min-h-[100px]"></div>
         </div>
     </div>
 
@@ -124,7 +130,6 @@
 
     async function init() {
         if (!GH_TOKEN) return alert("يرجى تسجيل الدخول من الصفحة الرئيسية!");
-        document.body.classList.add('is-loading');
         try {
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`, {
                 headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" }
@@ -134,22 +139,10 @@
                 fileSha = data.sha;
                 const rawJson = decodeURIComponent(escape(atob(data.content.replace(/\s/g, ''))));
                 db = JSON.parse(rawJson);
-
-                // CRITICAL MIGRATION: Convert old [name, spec] to {name, spec, phone}
-                db.names = db.names.map(item => {
-                    if (Array.isArray(item)) {
-                        return { name: item[0], spec: item[1] || "NS", phone: "" };
-                    }
-                    return item;
-                });
-
+                db.names = db.names.map(item => Array.isArray(item) ? { name: item[0], spec: item[1] || "NS", phone: "" } : item);
                 renderResidents();
             }
-        } catch (e) { 
-            console.error(e); 
-            alert("حدث خطأ في جلب البيانات من GitHub");
-        }
-        document.body.classList.remove('is-loading');
+        } catch (e) { document.getElementById('count-tag').innerText = "خطأ في الاتصال"; }
     }
 
     function renderResidents() {
@@ -159,12 +152,8 @@
         
         const grouped = {};
         specialties.forEach(s => grouped[s.id] = []);
-        
         db.names.forEach((res, i) => {
-            const name = res.name || "";
-            if (name.toLowerCase().includes(searchTerm)) {
-                grouped[res.spec]?.push({ ...res, idx: i });
-            }
+            if ((res.name || "").toLowerCase().includes(searchTerm)) grouped[res.spec]?.push({ ...res, idx: i });
         });
 
         specialties.forEach(spec => {
@@ -182,28 +171,27 @@
                 row.className = "resident-row px-5 py-4";
                 row.innerHTML = `
                     <div class="flex flex-col">
-                        <span class="text-white font-bold text-sm">${res.name}</span>
+                        <span class="text-white font-bold text-sm underline decoration-amber-500/20 underline-offset-4">${res.name}</span>
                         <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${res.phone || 'بدون هاتف'}</span>
                     </div>
                     <div class="flex gap-2" dir="ltr">
-                        <button onclick="openEdit(${res.idx})" class="text-[10px] font-bold text-blue-400 p-2 px-4 border border-blue-400/20 rounded-lg">تعديل</button>
-                        <button onclick="deleteResident(${res.idx})" class="text-[10px] font-bold text-red-500 p-2 px-4 border border-red-500/20 rounded-lg">حذف</button>
+                        <button onclick="openEdit(${res.idx})" class="text-[10px] font-bold text-blue-400 p-2 px-4 border border-blue-400/20 rounded-xl active:bg-blue-400/10">تعديل</button>
+                        <button onclick="deleteResident(${res.idx})" class="text-[10px] font-bold text-red-500 p-2 px-4 border border-red-500/20 rounded-xl active:bg-red-500/10">حذف</button>
                     </div>
                 `;
                 list.appendChild(row);
             });
         });
-        document.getElementById('count-tag').innerText = `العدد: ${db.names.length}`;
+        document.getElementById('count-tag').innerText = `العدد الكلي: ${db.names.length}`;
     }
 
     function addResident() {
-        const name = document.getElementById('new-name').value.trim();
-        const rawPhone = document.getElementById('new-phone').value.trim();
-        const spec = document.getElementById('new-spec').value;
-        if (!name) return alert("يرجى إدخال الاسم");
-        db.names.push({ name, spec, phone: formatIraqiPhone(rawPhone) });
-        document.getElementById('new-name').value = "";
-        document.getElementById('new-phone').value = "";
+        const nameEl = document.getElementById('new-name');
+        const phoneEl = document.getElementById('new-phone');
+        const name = nameEl.value.trim();
+        if (!name) return;
+        db.names.push({ name, spec: document.getElementById('new-spec').value, phone: formatIraqiPhone(phoneEl.value.trim()) });
+        nameEl.value = ""; phoneEl.value = "";
         renderResidents();
     }
 
@@ -240,12 +228,17 @@
     }
 
     async function saveToGithub() {
-        const btn = document.querySelector('[onclick="saveToGithub()"]');
-        btn.innerText = "...";
-        document.body.classList.add('is-loading');
+        const btn = document.getElementById('main-save-btn');
+        const originalText = "حفظ السحابة";
+        
+        // State: Loading
+        btn.innerText = "جاري المزامنة...";
+        btn.className = "btn-save loading px-5 py-2.5 rounded-xl text-[11px] font-black uppercase shadow-lg";
+        btn.disabled = true;
+
         try {
             const body = { 
-                message: "Sync: Database Format Update 🇮🇶", 
+                message: "Database Registry Sync 🇮🇶", 
                 content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
                 sha: fileSha 
             };
@@ -254,14 +247,29 @@
                 headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" },
                 body: JSON.stringify(body)
             });
+
             if (res.ok) {
                 const updated = await res.json();
                 fileSha = updated.content.sha;
-                alert("تم الحفظ بنجاح! ✅");
+                
+                // State: Success
+                btn.innerText = "تم الحفظ بنجاح! ✅";
+                btn.className = "btn-save success px-5 py-2.5 rounded-xl text-[11px] font-black uppercase shadow-lg";
+            } else {
+                throw new Error();
             }
-        } catch (e) { alert("فشل الحفظ في السحابة"); }
-        btn.innerText = "حفظ السحابة";
-        document.body.classList.remove('is-loading');
+        } catch (e) {
+            // State: Error
+            btn.innerText = "فشل الحفظ! ❌";
+            btn.className = "btn-save error px-5 py-2.5 rounded-xl text-[11px] font-black uppercase shadow-lg";
+        }
+
+        // Revert to original after 3 seconds
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerText = originalText;
+            btn.className = "btn-save bg-amber-500 text-black px-5 py-2.5 rounded-xl text-[11px] font-black uppercase shadow-lg active:scale-95";
+        }, 3000);
     }
 </script>
 </body>
