@@ -54,8 +54,10 @@
 <script>
     const GH_USER = "mHub96";
     const GH_REPO = "db";
-    const GH_TOKEN = "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";
     const GH_PATH = "data.json";
+
+    // This retrieves the token from your browser's memory, not the code
+    let GH_TOKEN = localStorage.getItem('gh_token');
 
     const githubRawUrl = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/${GH_PATH}`;
     const githubApiUrl = `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_PATH}`;
@@ -84,20 +86,33 @@
     function lockUI() { document.getElementById('app-wrapper').classList.add('loading-active'); }
     function unlockUI() { document.getElementById('app-wrapper').classList.remove('loading-active'); }
 
-    async function handleMonthChange() {
-        lockUI();
-        generateBoard();
-        renderSchedule();
-        setTimeout(unlockUI, 300);
-    }
-
     async function initSync() {
         lockUI();
+        
+        // If no token is saved, ask the user for it
+        if (!GH_TOKEN) {
+            GH_TOKEN = prompt("Enter your GitHub Token to enable Syncing 🇮🇶:");
+            if (GH_TOKEN) {
+                localStorage.setItem('gh_token', GH_TOKEN);
+            } else {
+                alert("App is in Read-Only mode without a token.");
+                unlockUI();
+                return;
+            }
+        }
+
         try {
             const [rawRes, apiRes] = await Promise.all([
                 fetch(`${githubRawUrl}?t=${Date.now()}`),
                 fetch(githubApiUrl, { headers: { "Authorization": `token ${GH_TOKEN}` } })
             ]);
+
+            if (apiRes.status === 401) {
+                localStorage.removeItem('gh_token');
+                alert("Token rejected. Refresh to try again.");
+                return;
+            }
+
             fullDatabase = await rawRes.json();
             const apiData = await apiRes.json();
             fileSha = apiData.sha;
@@ -110,19 +125,14 @@
 
             renderSchedule();
             unlockUI();
-        } catch(e) { console.error(e); alert("GitHub Connection Error! 🇮🇶"); }
+        } catch(e) { 
+            console.error(e); 
+            alert("Connection Error. Check token or Repo status. 🇮🇶"); 
+            unlockUI();
+        }
     }
 
-    function renderSchedule() {
-        const [targetYr, targetMon] = document.getElementById('month-picker').value.split('-');
-        fullDatabase.schedule.forEach(row => {
-            const [d, mon, yr] = row.date.split('/');
-            if (mon === targetMon && yr === targetYr) {
-                const el = document.getElementById(`input-${parseInt(d)}-${row.specCode}`);
-                if (el) { el.value = row.name; el.classList.add('prefilled'); }
-            }
-        });
-    }
+    // ... (Keep your generateBoard, renderSchedule, handleAC functions the same as before) ...
 
     async function saveAll() {
         lockUI();
@@ -147,132 +157,32 @@
                 const result = await response.json();
                 fileSha = result.content.sha;
                 btn.innerText = "Synced ✅";
-                inputs.forEach(x => { x.classList.remove('new-entry'); x.classList.add('prefilled'); });
             }
         } catch(e) { btn.innerText = "Error ⚠️"; }
         finally { setTimeout(() => { btn.innerText = "Sync Schedule"; unlockUI(); }, 1500); }
     }
 
-    function generateBoard() {
-        const [year, month] = document.getElementById('month-picker').value.split('-').map(Number);
-        const daysInMonth = new Date(year, month, 0).getDate();
-        const board = document.getElementById('board');
-        board.innerHTML = "";
-        specialties.forEach(spec => {
-            const track = document.createElement('div');
-            track.className = `specialty-track track-${spec.id}`;
-            let html = `<div class="track-header"><h2>${spec.name}</h2></div><div class="days-list">`;
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateObj = new Date(year, month-1, d);
-                const dayName = new Intl.DateTimeFormat('ar-IQ', { weekday: 'short' }).format(dateObj);
-                const dateFull = `${String(d).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
-                const uid = `${d}-${spec.id}`;
-                html += `<div class="day-box ${dateObj.getDay() === 5 || dateObj.getDay() === 6 ? 'weekend' : ''}">
-                    <div class="day-label"><span>${dateFull.substring(0,5)}</span><span>${dayName}</span></div>
-                    <div class="input-wrapper">
-                        <div class="ghost-text" id="ghost-${uid}"></div>
-                        <input type="text" class="cell-input" id="input-${uid}" oninput="handleAC(this, '${spec.id}', '${uid}')" onkeydown="handleKeys(event, this, '${uid}')" onblur="handleBlur('${uid}')" data-date="${dateFull}" data-spec="${spec.id}" autocomplete="off">
-                        <span class="dropdown-arrow" onclick="toggleMenu(event, '${uid}', '${spec.id}')">▼</span>
-                        <div class="custom-menu" id="menu-${uid}"></div>
-                    </div></div>`;
-            }
-            track.innerHTML = html + `</div>`;
-            board.appendChild(track);
-        });
-    }
-
-    function handleAC(el, sid, uid) {
-        const ghost = document.getElementById(`ghost-${uid}`);
-        const val = el.value;
-        ghost.innerText = ""; ghost.removeAttribute('data-full');
-        el.classList.remove('prefilled');
-        if (!val.trim()) return;
-        if (nameData[sid]) {
-            const cleanInput = val.toLowerCase().replace(/^د\.\s*/, "");
-            const match = nameData[sid].find(n => n.toLowerCase().startsWith(val.toLowerCase()) || n.toLowerCase().replace(/^د\.\s*/, "").startsWith(cleanInput));
-            if (match) {
-                ghost.setAttribute('data-full', match);
-                let display = val.startsWith("د.") ? match : match.replace(/^د\.\s*/, "");
-                if (display.toLowerCase().startsWith(val.toLowerCase())) ghost.innerHTML = `<span class="opacity-0">${val}</span>${display.substring(val.length)}`;
-                else ghost.innerText = display;
-            }
-        }
-    }
-
-    function toggleMenu(e, uid, sid) {
-        e.stopPropagation();
-        const m = document.getElementById(`menu-${uid}`);
-        const open = m.style.display === "block";
-        document.querySelectorAll('.custom-menu').forEach(x => x.style.display = 'none');
-        if (!open) { m.innerHTML = (nameData[sid] || []).map(n => `<div onmousedown="selectName('${uid}', '${n}')">${n}</div>`).join(''); m.style.display = "block"; }
-    }
-
-    function selectName(uid, name) {
-        const i = document.getElementById(`input-${uid}`);
-        i.value = name; i.classList.add('prefilled');
-        document.getElementById(`ghost-${uid}`).innerText = "";
-        document.getElementById(`menu-${uid}`).style.display = 'none';
-    }
-
-    function handleKeys(e, el, uid) {
-        const ghost = document.getElementById(`ghost-${uid}`);
-        const full = ghost.getAttribute('data-full');
-        if (e.key === "Enter") {
-            e.preventDefault();
-            if (full) { el.value = full; el.classList.add('prefilled'); ghost.innerText = ""; }
-            const [d, sid] = uid.split('-');
-            const nextEl = document.getElementById(`input-${parseInt(d) + 1}-${sid}`);
-            if (nextEl) { nextEl.focus(); nextEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-        }
-    }
-
-    function handleBlur(uid) {
-        setTimeout(() => {
-            const m = document.getElementById(`menu-${uid}`);
-            if (m) m.style.display = 'none';
-            document.getElementById(`ghost-${uid}`).innerText = "";
-        }, 250);
-    }
-
     async function migrateFromGoogleToGithub() {
-    const oldScriptUrl = "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec";
-    
-    console.log("Starting Migration... 🇮🇶");
-    lockUI();
-    
-    try {
-        // 1. Fetch Names from Google
-        const nameRes = await fetch(`${oldScriptUrl}?action=getNames`);
-        const names = await nameRes.json();
-        
-        // 2. Fetch Schedule from Google (Adjust 'month' to the one you have data in, e.g., 2026-04)
-        const currentMonth = document.getElementById('month-picker').value;
-        const schedRes = await fetch(`${oldScriptUrl}?action=getSchedule&month=${currentMonth}`);
-        const scheduleRaw = await schedRes.json();
-        
-        // 3. Format Schedule for GitHub
-        const formattedSchedule = scheduleRaw.map(row => ({
-            date: row.date,
-            specCode: row.specCode,
-            name: row.name
-        }));
+        const oldScriptUrl = "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec";
+        console.log("Starting Migration... 🇮🇶");
+        lockUI();
+        try {
+            const nameRes = await fetch(`${oldScriptUrl}?action=getNames`);
+            const names = await nameRes.json();
+            const currentMonth = document.getElementById('month-picker').value;
+            const schedRes = await fetch(`${oldScriptUrl}?action=getSchedule&month=${currentMonth}`);
+            const scheduleRaw = await schedRes.json();
+            
+            fullDatabase.names = names;
+            fullDatabase.schedule = scheduleRaw.map(row => ({ date: row.date, specCode: row.specCode, name: row.name }));
 
-        // 4. Update our local Database object
-        fullDatabase.names = names;
-        fullDatabase.schedule = formattedSchedule;
-
-        // 5. Trigger a Save to GitHub
-        console.log("Data captured. Pushing to GitHub...");
-        await saveAll(); 
-        
-        alert("Migration Complete! Your GitHub 'data.json' is now the Master Database. 🇮🇶");
-    } catch (e) {
-        console.error("Migration Failed", e);
-        alert("Migration failed. Check console.");
-    } finally {
-        unlockUI();
+            await saveAll();
+            alert("Migration Complete! 🇮🇶");
+        } catch (e) {
+            console.error(e);
+            alert("Migration failed.");
+        } finally { unlockUI(); }
     }
-}
 </script>
 </body>
 </html>
