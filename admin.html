@@ -47,6 +47,8 @@
         .btn-save.error { background: #ef4444 !important; color: white; }
         
         .phone-display { direction: ltr; text-align: right; unicode-bidi: plaintext; }
+        .resident-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .resident-row:last-child { border-bottom: none; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -158,11 +160,20 @@
             if (res.ok) {
                 const data = await res.json();
                 fileSha = data.sha;
-                db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
-                db.names = db.names.map(item => Array.isArray(item) ? { name: item[0], spec: item[1] || "NS", phone: "" } : item);
+                const content = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
+                
+                // Normalization: Convert all entries to objects if they are arrays
+                db.names = (content.names || []).map(item => {
+                    if (Array.isArray(item)) {
+                        return { name: item[0], spec: item[1] || "NS", phone: "" };
+                    }
+                    return item;
+                });
+                db.schedule = content.schedule || [];
+                
                 renderResidents();
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Init Error:", e); }
     }
 
     function toggleSection(specId) {
@@ -178,8 +189,11 @@
         
         const grouped = {};
         specialties.forEach(s => grouped[s.id] = []);
+        
         db.names.forEach((res, i) => {
-            if ((res.name || "").toLowerCase().includes(searchTerm)) grouped[res.spec]?.push({ ...res, idx: i });
+            if ((res.name || "").toLowerCase().includes(searchTerm)) {
+                if (grouped[res.spec]) grouped[res.spec].push({ ...res, idx: i });
+            }
         });
 
         specialties.forEach(spec => {
@@ -228,21 +242,21 @@
         document.getElementById('count-tag').innerText = `العدد الإجمالي: ${db.names.length}`;
     }
 
-    // AUTO-SYNC TRIGGER: Used inside Add, Edit, and Delete
     async function addResident() {
         const nameEl = document.getElementById('new-name');
         const phoneEl = document.getElementById('new-phone');
+        const specEl = document.getElementById('new-spec');
         if (!nameEl.value.trim()) return;
         
         db.names.push({ 
             name: ensureDoctorTitle(nameEl.value), 
-            spec: document.getElementById('new-spec').value, 
+            spec: specEl.value, 
             phone: formatIraqiPhone(phoneEl.value.trim()) 
         });
         
         nameEl.value = ""; phoneEl.value = "";
         renderResidents();
-        await saveToGithub(); // Instant background save
+        await saveToGithub();
     }
 
     function openEdit(idx) {
@@ -268,14 +282,14 @@
         };
         closeModal();
         renderResidents();
-        await saveToGithub(); // Instant background save
+        await saveToGithub();
     }
 
     async function deleteResident(idx) {
         if (confirm(`حذف ${db.names[idx].name}؟`)) {
             db.names.splice(idx, 1);
             renderResidents();
-            await saveToGithub(); // Instant background save
+            await saveToGithub();
         }
     }
 
@@ -287,7 +301,7 @@
 
         try {
             const body = { 
-                message: "Auto-Sync: Database Action Update 🇮🇶", 
+                message: "Database Update 🇮🇶", 
                 content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
                 sha: fileSha 
             };
