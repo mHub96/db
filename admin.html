@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RESIDENT MANAGER 🇮🇶</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0b0e11; color: #94a3b8; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .card { background: #16191d; border: 1px solid rgba(255,255,255,0.05); border-radius: 1rem; }
+        input, select { background: #000 !important; border: 1px solid #334155 !important; color: white !important; }
+        .btn-primary { background: #fff; color: #000; font-weight: 900; transition: all 0.2s; }
+        .btn-primary:hover { transform: scale(1.02); background: #fbbf24; }
+        .resident-row { border-bottom: 1px solid rgba(255,255,255,0.02); }
+        .resident-row:hover { background: rgba(255,255,255,0.02); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-black text-white">RESIDENT DATABASE 🇮🇶</h1>
+            <a href="index.html" class="text-xs text-blue-400 hover:underline">← Back to Scheduler</a>
+        </div>
+
+        <div class="card p-6 mb-8">
+            <h2 class="text-sm font-bold text-amber-500 uppercase mb-4 tracking-widest">Add New Resident</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input type="text" id="new-name" placeholder="Full Name (e.g. د. علي...)" class="p-3 rounded-lg">
+                <select id="new-spec" class="p-3 rounded-lg">
+                    <option value="NS">Neurosurgery (NS)</option>
+                    <option value="CT">Cardiothoracic (CT)</option>
+                    <option value="GS">General Surg (GS)</option>
+                    <option value="US">Urosurgery (US)</option>
+                    <option value="ENT">ENT Dept (ENT)</option>
+                    <option value="H">Cardiology (H)</option>
+                    <option value="A">Anesthesia (OP/ICU)</option>
+                    <option value="R">Radiology (R)</option>
+                    <option value="ON">Oncology (ON)</option>
+                </select>
+                <button onclick="addResident()" class="btn-primary p-3 rounded-lg uppercase text-xs">Add Resident</button>
+            </div>
+        </div>
+
+        <div class="card overflow-hidden">
+            <div class="p-4 bg-white/5 border-bottom border-white/5 flex justify-between items-center">
+                <span class="text-xs font-bold uppercase">Current Residents</span>
+                <span id="count-tag" class="bg-amber-500 text-black px-2 py-0.5 rounded text-[10px] font-bold">0 TOTAL</span>
+            </div>
+            <div id="resident-list" class="max-h-[600px] overflow-y-auto">
+                </div>
+        </div>
+        
+        <div class="mt-6 flex justify-end">
+            <button onclick="saveToGithub()" id="save-btn" class="bg-green-600 text-white px-8 py-3 rounded-xl font-black uppercase text-xs shadow-lg active:scale-95 transition-all">Save Changes to GitHub</button>
+        </div>
+    </div>
+
+<script>
+    const CONFIG = {
+        user: "mHub96", repo: "db", path: "data.json",
+        rawUrl: "https://raw.githubusercontent.com/mHub96/db/main/data.json"
+    };
+
+    let GH_TOKEN = localStorage.getItem('gh_token');
+    let db = { names: [], schedule: [] };
+    let fileSha = "";
+
+    window.onload = init;
+
+    async function init() {
+        if (!GH_TOKEN) return alert("Please login on the main page first!");
+        
+        try {
+            const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`, {
+                headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                fileSha = data.sha;
+                db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
+                renderResidents();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function renderResidents() {
+        const list = document.getElementById('resident-list');
+        const countTag = document.getElementById('count-tag');
+        list.innerHTML = "";
+        
+        // Sort names alphabetically
+        db.names.sort((a, b) => a[0].localeCompare(b[0], 'ar'));
+        countTag.innerText = `${db.names.length} TOTAL`;
+
+        db.names.forEach((res, index) => {
+            const row = document.createElement('div');
+            row.className = "resident-row p-4 flex justify-between items-center";
+            row.innerHTML = `
+                <div class="flex flex-col">
+                    <span class="text-white font-bold">${res[0]}</span>
+                    <span class="text-[10px] text-amber-500 font-mono uppercase">${res[1]}</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="editResident(${index})" class="text-xs text-blue-400 px-3 py-1 border border-blue-400/30 rounded hover:bg-blue-400/10">Edit</button>
+                    <button onclick="deleteResident(${index})" class="text-xs text-red-400 px-3 py-1 border border-red-400/30 rounded hover:bg-red-400/10">Delete</button>
+                </div>
+            `;
+            list.appendChild(row);
+        });
+    }
+
+    function addResident() {
+        const name = document.getElementById('new-name').value.trim();
+        const spec = document.getElementById('new-spec').value;
+        if (!name) return alert("Enter a name!");
+        
+        db.names.push([name, spec]);
+        document.getElementById('new-name').value = "";
+        renderResidents();
+    }
+
+    function deleteResident(index) {
+        if (confirm(`Delete ${db.names[index][0]}?`)) {
+            db.names.splice(index, 1);
+            renderResidents();
+        }
+    }
+
+    function editResident(index) {
+        const newName = prompt("Edit Name:", db.names[index][0]);
+        if (newName) {
+            db.names[index][0] = newName;
+            renderResidents();
+        }
+    }
+
+    async function saveToGithub() {
+        const btn = document.getElementById('save-btn');
+        btn.innerText = "UPLOADING...";
+        btn.disabled = true;
+
+        try {
+            const body = { 
+                message: "Update Residents 🇮🇶", 
+                content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
+                sha: fileSha 
+            };
+            const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
+                method: "PUT",
+                headers: { "Authorization": `token ${GH_TOKEN}` },
+                body: JSON.stringify(body)
+            });
+            
+            if (res.ok) {
+                const updatedData = await res.json();
+                fileSha = updatedData.content.sha;
+                alert("Database Updated Successfully! ✅");
+            } else {
+                alert("Error saving to GitHub.");
+            }
+        } catch (e) { alert("Save failed"); }
+        
+        btn.innerText = "Save Changes to GitHub";
+        btn.disabled = false;
+    }
+</script>
+</body>
+</html>
