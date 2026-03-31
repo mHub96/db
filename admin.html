@@ -121,6 +121,8 @@
 
 <script>
     const CONFIG = { user: "mHub96", repo: "db", path: "data.json" };
+    
+    // CRITICAL: Specialties IDs must match EXACTLY with your data.json spec keys
     const specialties = [
         { id: "NS", name: "Neurosurgery" }, { id: "CT", name: "Cardiothoracic" },
         { id: "GS", name: "General Surg" }, { id: "US", name: "Urosurgery" },
@@ -129,7 +131,7 @@
         { id: "ON", name: "Oncology" }, { id: "RESERVE", name: "RESERVE (احتياط)" }
     ];
 
-    let sectionStates = JSON.parse(localStorage.getItem('admin_sections')) || { "RESERVE": false };
+    let sectionStates = JSON.parse(localStorage.getItem('admin_sections')) || {};
     let GH_TOKEN = localStorage.getItem('gh_token');
     let db = { names: [], schedule: [] };
     let fileSha = "";
@@ -162,12 +164,17 @@
                 fileSha = data.sha;
                 const content = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
                 
-                // Normalization: Convert all entries to objects if they are arrays
+                // UNIFIED NORMALIZATION:
+                // Ensures any old ["Name", "Spec"] arrays become {"name": "...", "spec": "...", "phone": ""}
                 db.names = (content.names || []).map(item => {
                     if (Array.isArray(item)) {
                         return { name: item[0], spec: item[1] || "NS", phone: "" };
                     }
-                    return item;
+                    return {
+                        name: item.name || "",
+                        spec: item.spec || "NS",
+                        phone: item.phone || ""
+                    };
                 });
                 db.schedule = content.schedule || [];
                 
@@ -177,7 +184,7 @@
     }
 
     function toggleSection(specId) {
-        sectionStates[specId] = !sectionStates[specId];
+        sectionStates[specId] = (sectionStates[specId] === false) ? true : false;
         localStorage.setItem('admin_sections', JSON.stringify(sectionStates));
         renderResidents();
     }
@@ -191,8 +198,11 @@
         specialties.forEach(s => grouped[s.id] = []);
         
         db.names.forEach((res, i) => {
-            if ((res.name || "").toLowerCase().includes(searchTerm)) {
-                if (grouped[res.spec]) grouped[res.spec].push({ ...res, idx: i });
+            const matchesSearch = (res.name || "").toLowerCase().includes(searchTerm);
+            if (matchesSearch) {
+                // If spec doesn't exist in our list, put in RESERVE
+                const targetSpec = grouped[res.spec] ? res.spec : "RESERVE";
+                grouped[targetSpec].push({ ...res, idx: i });
             }
         });
 
@@ -202,6 +212,7 @@
             residents.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
 
             const section = document.createElement('div');
+            // Sections are OPEN by default unless specifically set to FALSE
             const isOpen = sectionStates[spec.id] !== false;
             section.className = isOpen ? "" : "collapsed";
 
