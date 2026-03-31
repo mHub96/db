@@ -25,9 +25,8 @@
         .day-box.weekend { background: rgba(255,255,255,0.05); border-left: 3px solid var(--spec-color); }
         .day-label { display: flex; justify-content: space-between; font-size: 0.6rem; font-weight: 800; color: #4b5563; padding: 0 0.5rem; }
         .input-wrapper { position: relative; width: 100%; direction: rtl; }
-        .cell-input, .ghost-text { width: 100%; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: var(--font-size); padding: 0.6rem; text-align: right; }
-        .cell-input { background: transparent; border: none; outline: none; color: #fff; z-index: 10; position: relative; }
-        .ghost-text { position: absolute; top: 0; right: 0; color: rgba(255,255,255,0.1); pointer-events: none; height: 100%; display: flex; align-items: center; padding-right: 0.6rem; }
+        .cell-input { width: 100%; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: var(--font-size); padding: 0.6rem; text-align: right; background: transparent; border: none; outline: none; color: #fff; z-index: 10; position: relative; }
+        .ghost-text { position: absolute; top: 0; right: 0; color: rgba(255,255,255,0.1); pointer-events: none; height: 100%; width: 100%; display: flex; align-items: center; padding-right: 0.6rem; text-align: right; direction: rtl; }
         .dropdown-arrow { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.5rem; color: #334155; cursor: pointer; z-index: 25; }
         .prefilled { color: var(--spec-color) !important; font-weight: 600; }
         .custom-menu { position: absolute; top: 100%; right: 0; width: 100%; max-height: 180px; overflow-y: auto; background: #1c1f26; border: 1px solid var(--spec-color); border-radius: 0.6rem; z-index: 1000; display: none; }
@@ -40,12 +39,13 @@
 </head>
 <body>
 
-    <div id="app-wrapper" class="loading-active">
+    <div id="app-wrapper">
         <div class="nav-bar">
-            <h1 class="text-lg font-black text-white uppercase tracking-tighter">Iraqi Teaching Hosp. Schedules</h1>
-            <div class="flex gap-4 items-center">
-                <input type="month" id="month-picker" class="bg-black text-amber-500 px-3 py-1.5 rounded-lg font-bold border border-white/10 text-xs" onchange="handleMonthChange()">
-                <button onclick="saveAll()" id="sync-btn" class="bg-white text-black px-5 py-2 rounded-lg font-black text-[10px] uppercase active:scale-95 transition-transform">Sync Schedule</button>
+            <h1 class="text-lg font-black text-white uppercase tracking-tighter">Teaching Hosp. Scheduler 🇮🇶</h1>
+            <div class="flex gap-2 items-center">
+                <input type="month" id="month-picker" class="bg-black text-amber-500 px-2 py-1.5 rounded-lg font-bold border border-white/10 text-[10px]" onchange="handleMonthChange()">
+                <button onclick="saveAll()" id="sync-btn" class="bg-white text-black px-4 py-2 rounded-lg font-black text-[10px] uppercase">Sync</button>
+                <button onclick="setToken()" class="bg-blue-600 text-white px-2 py-2 rounded-lg font-black text-[10px] uppercase">Login</button>
             </div>
         </div>
         <div class="board-container" id="board"></div>
@@ -55,12 +55,10 @@
     const GH_USER = "mHub96";
     const GH_REPO = "db";
     const GH_PATH = "data.json";
-
-    // This retrieves the token from your browser's memory, not the code
     let GH_TOKEN = localStorage.getItem('gh_token');
-
-    const githubRawUrl = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/${GH_PATH}`;
-    const githubApiUrl = `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_PATH}`;
+    let fileSha = "";
+    let fullDatabase = { names: [], schedule: [] };
+    let nameData = {};
 
     const specialties = [
         { id: "NS", name: "Neurosurgery" }, { id: "CT", name: "Cardiothoracic" },
@@ -71,10 +69,6 @@
         { id: "ON", name: "Oncology" }
     ];
 
-    let nameData = {};
-    let fullDatabase = { names: [], schedule: [] };
-    let fileSha = "";
-
     window.onload = () => {
         const now = new Date();
         const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -83,105 +77,150 @@
         initSync();
     };
 
-    function lockUI() { document.getElementById('app-wrapper').classList.add('loading-active'); }
-    function unlockUI() { document.getElementById('app-wrapper').classList.remove('loading-active'); }
+    function setToken() {
+        const t = prompt("Enter GitHub Token:");
+        if(t) { localStorage.setItem('gh_token', t); location.reload(); }
+    }
 
     async function initSync() {
-        lockUI();
-        
-        // If no token is saved, ask the user for it
-        if (!GH_TOKEN) {
-            GH_TOKEN = prompt("Enter your GitHub Token to enable Syncing 🇮🇶:");
-            if (GH_TOKEN) {
-                localStorage.setItem('gh_token', GH_TOKEN);
-            } else {
-                alert("App is in Read-Only mode without a token.");
-                unlockUI();
-                return;
-            }
-        }
-
+        if (!GH_TOKEN) { console.log("No token found."); return; }
+        document.getElementById('app-wrapper').classList.add('loading-active');
         try {
-            const [rawRes, apiRes] = await Promise.all([
-                fetch(`${githubRawUrl}?t=${Date.now()}`),
-                fetch(githubApiUrl, { headers: { "Authorization": `token ${GH_TOKEN}` } })
-            ]);
-
-            if (apiRes.status === 401) {
-                localStorage.removeItem('gh_token');
-                alert("Token rejected. Refresh to try again.");
-                return;
-            }
-
-            fullDatabase = await rawRes.json();
-            const apiData = await apiRes.json();
-            fileSha = apiData.sha;
-
+            const res = await fetch(`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_PATH}`, {
+                headers: { "Authorization": `token ${GH_TOKEN}` }
+            });
+            const data = await res.json();
+            fileSha = data.sha;
+            fullDatabase = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+            
+            // Map names for autocomplete
             specialties.forEach(s => {
-                if (s.id === "OP" || s.id === "ICU") nameData[s.id] = fullDatabase.names.filter(x => x[1] === "A").map(x => x[0]);
-                else if (s.id === "D") nameData[s.id] = fullDatabase.names.map(x => x[0]);
-                else nameData[s.id] = fullDatabase.names.filter(x => x[1] === s.id).map(x => x[0]);
+                if (s.id === "OP" || s.id === "ICU") nameData[s.id] = (fullDatabase.names || []).filter(x => x[1] === "A").map(x => x[0]);
+                else if (s.id === "D") nameData[s.id] = (fullDatabase.names || []).map(x => x[0]);
+                else nameData[s.id] = (fullDatabase.names || []).filter(x => x[1] === s.id).map(x => x[0]);
             });
 
             renderSchedule();
-            unlockUI();
-        } catch(e) { 
-            console.error(e); 
-            alert("Connection Error. Check token or Repo status. 🇮🇶"); 
-            unlockUI();
+        } catch(e) { alert("Auth Error. Click Login."); }
+        document.getElementById('app-wrapper').classList.remove('loading-active');
+    }
+
+    function generateBoard() {
+        const [year, month] = document.getElementById('month-picker').value.split('-').map(Number);
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const board = document.getElementById('board');
+        board.innerHTML = "";
+        specialties.forEach(spec => {
+            const track = document.createElement('div');
+            track.className = `specialty-track track-${spec.id}`;
+            let html = `<div class="track-header"><h2>${spec.name}</h2></div><div class="days-list">`;
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(year, month-1, d);
+                const dayName = new Intl.DateTimeFormat('ar-IQ', { weekday: 'short' }).format(dateObj);
+                const dateFull = `${String(d).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                const uid = `${d}-${spec.id}`;
+                html += `<div class="day-box ${dateObj.getDay() === 5 || dateObj.getDay() === 6 ? 'weekend' : ''}">
+                    <div class="day-label"><span>${dateFull.substring(0,5)}</span><span>${dayName}</span></div>
+                    <div class="input-wrapper">
+                        <div class="ghost-text" id="ghost-${uid}"></div>
+                        <input type="text" class="cell-input" id="input-${uid}" oninput="handleAC(this, '${spec.id}', '${uid}')" onkeydown="handleKeys(event, this, '${uid}')" data-date="${dateFull}" data-spec="${spec.id}" autocomplete="off">
+                        <span class="dropdown-arrow" onclick="toggleMenu(event, '${uid}', '${spec.id}')">▼</span>
+                        <div class="custom-menu" id="menu-${uid}"></div>
+                    </div></div>`;
+            }
+            track.innerHTML = html + `</div>`;
+            board.appendChild(track);
+        });
+    }
+
+    function renderSchedule() {
+        const [targetYr, targetMon] = document.getElementById('month-picker').value.split('-');
+        (fullDatabase.schedule || []).forEach(row => {
+            const [d, mon, yr] = row.date.split('/');
+            if (mon === targetMon && yr === targetYr) {
+                const el = document.getElementById(`input-${parseInt(d)}-${row.specCode}`);
+                if (el) { el.value = row.name; el.classList.add('prefilled'); }
+            }
+        });
+    }
+
+    function handleAC(el, sid, uid) {
+        const ghost = document.getElementById(`ghost-${uid}`);
+        const val = el.value;
+        ghost.innerText = "";
+        if (!val.trim() || !nameData[sid]) return;
+        const match = nameData[sid].find(n => n.toLowerCase().startsWith(val.toLowerCase()));
+        if (match) {
+            ghost.innerText = match;
+            el.dataset.full = match;
         }
     }
 
-    // ... (Keep your generateBoard, renderSchedule, handleAC functions the same as before) ...
+    function handleKeys(e, el, uid) {
+        if (e.key === "Enter" && el.dataset.full) {
+            el.value = el.dataset.full;
+            el.classList.add('prefilled');
+            document.getElementById(`ghost-${uid}`).innerText = "";
+        }
+    }
+
+    function toggleMenu(e, uid, sid) {
+        e.stopPropagation();
+        const m = document.getElementById(`menu-${uid}`);
+        const open = m.style.display === "block";
+        document.querySelectorAll('.custom-menu').forEach(x => x.style.display = 'none');
+        if (!open) { 
+            m.innerHTML = (nameData[sid] || []).map(n => `<div onmousedown="selectName('${uid}', '${n}')">${n}</div>`).join(''); 
+            m.style.display = "block"; 
+        }
+    }
+
+    function selectName(uid, name) {
+        const i = document.getElementById(`input-${uid}`);
+        i.value = name; i.classList.add('prefilled');
+        document.getElementById(`ghost-${uid}`).innerText = "";
+        document.getElementById(`menu-${uid}`).style.display = 'none';
+    }
 
     async function saveAll() {
-        lockUI();
+        if(!GH_TOKEN) return alert("Click Login first!");
         const btn = document.getElementById('sync-btn');
-        btn.innerText = "Syncing...";
-
+        btn.innerText = "...";
         const inputs = Array.from(document.querySelectorAll('.cell-input')).filter(x => x.value.trim() !== "");
         const currentMonthEntries = inputs.map(x => ({ date: x.dataset.date, specCode: x.dataset.spec, name: x.value.trim() }));
-
         const [activeYr, activeMon] = document.getElementById('month-picker').value.split('-');
         const otherData = fullDatabase.schedule.filter(row => !row.date.endsWith(`${activeMon}/${activeYr}`));
         fullDatabase.schedule = [...otherData, ...currentMonthEntries];
 
         const content = btoa(unescape(encodeURIComponent(JSON.stringify(fullDatabase, null, 2))));
         try {
-            const response = await fetch(githubApiUrl, {
+            const res = await fetch(`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_PATH}`, {
                 method: "PUT",
                 headers: { "Authorization": `token ${GH_TOKEN}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ message: `Update ${new Date().toLocaleString()} 🇮🇶`, content: content, sha: fileSha })
+                body: JSON.stringify({ message: "Update 🇮🇶", content: content, sha: fileSha })
             });
-            if (response.ok) {
-                const result = await response.json();
-                fileSha = result.content.sha;
-                btn.innerText = "Synced ✅";
+            if (res.ok) {
+                const r = await res.json();
+                fileSha = r.content.sha;
+                btn.innerText = "OK ✅";
             }
-        } catch(e) { btn.innerText = "Error ⚠️"; }
-        finally { setTimeout(() => { btn.innerText = "Sync Schedule"; unlockUI(); }, 1500); }
+        } catch(e) { btn.innerText = "Err"; }
+        setTimeout(() => btn.innerText = "Sync", 2000);
     }
 
-    async function migrateFromGoogleToGithub() {
+    // --- MIGRATION TOOL ---
+    async function migrateFromGoogle() {
         const oldScriptUrl = "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec";
-        console.log("Starting Migration... 🇮🇶");
-        lockUI();
         try {
             const nameRes = await fetch(`${oldScriptUrl}?action=getNames`);
             const names = await nameRes.json();
-            const currentMonth = document.getElementById('month-picker').value;
-            const schedRes = await fetch(`${oldScriptUrl}?action=getSchedule&month=${currentMonth}`);
+            const schedRes = await fetch(`${oldScriptUrl}?action=getSchedule&month=${document.getElementById('month-picker').value}`);
             const scheduleRaw = await schedRes.json();
-            
             fullDatabase.names = names;
-            fullDatabase.schedule = scheduleRaw.map(row => ({ date: row.date, specCode: row.specCode, name: row.name }));
-
+            fullDatabase.schedule = scheduleRaw;
             await saveAll();
-            alert("Migration Complete! 🇮🇶");
-        } catch (e) {
-            console.error(e);
-            alert("Migration failed.");
-        } finally { unlockUI(); }
+            alert("Migration Done! 🇮🇶");
+        } catch (e) { alert("Failed. Check Console."); }
     }
 </script>
 </body>
