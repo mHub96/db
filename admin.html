@@ -12,33 +12,35 @@
         .card { background: var(--card); border: 1px solid rgba(255,255,255,0.05); border-radius: 1.25rem; }
         input, select { background: #000 !important; border: 1px solid #334155 !important; color: white !important; outline: none !important; }
         input:focus, select:focus { border-color: var(--accent) !important; }
-        .resident-row { border-bottom: 1px solid rgba(255,255,255,0.02); }
-        .spec-header { background: rgba(255,255,255,0.03); border-y: 1px solid rgba(255,255,255,0.05); }
+        
+        /* RTL Alignment for Names */
+        .resident-row { border-bottom: 1px solid rgba(255,255,255,0.02); direction: rtl; }
+        .spec-header { background: rgba(255,255,255,0.03); border-y: 1px solid rgba(255,255,255,0.05); direction: rtl; }
+        
         .loading-overlay { position: fixed; inset: 0; background: rgba(11,14,17,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
         .is-loading .loading-overlay { display: flex; }
     </style>
 </head>
 <body class="p-4 md:p-10">
 
-    <div id="loader" class="loading-overlay"><div class="text-white font-black animate-pulse text-xs uppercase tracking-widest">Updating Database...</div></div>
+    <div id="loader" class="loading-overlay"><div class="text-white font-black animate-pulse text-xs uppercase tracking-widest">Processing Data...</div></div>
 
     <div class="max-w-4xl mx-auto">
         <div class="flex justify-between items-center mb-10">
-            <div>
-                <h1 class="text-3xl font-black text-white tracking-tighter uppercase">Resident DB 🇮🇶</h1>
-                <p class="text-[10px] font-bold text-amber-500 uppercase tracking-[0.2em]">Contact & Specialty Registry</p>
+            <div class="text-left"> <h1 class="text-3xl font-black text-white tracking-tighter uppercase">Resident DB 🇮🇶</h1>
+                <p class="text-[10px] font-bold text-amber-500 uppercase tracking-[0.2em]">RTL Database Management</p>
             </div>
             <div class="flex gap-2">
                 <a href="index.html" class="bg-white/5 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase">Scheduler</a>
-                <button onclick="saveToGithub()" id="save-btn" class="bg-amber-500 text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase">Save to GH</button>
+                <button onclick="saveToGithub()" id="save-btn" class="bg-amber-500 text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase">Save Changes</button>
             </div>
         </div>
 
         <div class="card p-6 mb-8">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <input type="text" id="new-name" placeholder="Name (د. محمد...)" class="md:col-span-5 p-3 rounded-xl text-sm font-bold">
-                <input type="tel" id="new-phone" placeholder="Phone (077...)" class="md:col-span-3 p-3 rounded-xl text-sm font-bold">
-                <select id="new-spec" class="md:col-span-3 p-3 rounded-xl text-sm font-bold">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3" direction="rtl">
+                <input type="text" id="new-name" placeholder="الاسم (د. محمد...)" class="md:col-span-5 p-3 rounded-xl text-sm font-bold text-right">
+                <input type="tel" id="new-phone" placeholder="0770..." class="md:col-span-3 p-3 rounded-xl text-sm font-bold text-right">
+                <select id="new-spec" class="md:col-span-3 p-3 rounded-xl text-sm font-bold text-right">
                     <option value="NS">Neurosurgery (NS)</option>
                     <option value="CT">Cardiothoracic (CT)</option>
                     <option value="GS">General Surg (GS)</option>
@@ -54,8 +56,8 @@
         </div>
 
         <div class="card overflow-hidden">
-            <div class="p-4 border-b border-white/5 flex justify-between items-center bg-white/5">
-                <input type="text" id="search-db" oninput="renderResidents()" placeholder="Search staff..." class="w-full md:w-64 p-2 px-4 rounded-lg text-xs font-bold !bg-black">
+            <div class="p-4 border-b border-white/5 flex flex-row-reverse justify-between items-center bg-white/5">
+                <input type="text" id="search-db" oninput="renderResidents()" placeholder="بحث عن اسم..." class="w-full md:w-64 p-2 px-4 rounded-lg text-xs font-bold !bg-black text-right">
                 <span id="count-tag" class="text-[10px] font-black text-amber-500 uppercase">0 Total</span>
             </div>
             <div id="resident-list" class="max-h-[60vh] overflow-y-auto"></div>
@@ -78,6 +80,17 @@
 
     window.onload = init;
 
+    // MECHANIC: Formatting function for Iraqi Numbers
+    function formatIraqiPhone(num) {
+        let clean = num.replace(/\D/g, ''); // Remove non-digits
+        if (clean.startsWith('07')) {
+            return '+964' + clean.substring(1);
+        } else if (clean.startsWith('7')) {
+            return '+964' + clean;
+        }
+        return num; // Return as is if it doesn't match expected pattern
+    }
+
     async function init() {
         if (!GH_TOKEN) return alert("Login first!");
         document.body.classList.add('is-loading');
@@ -90,7 +103,7 @@
                 fileSha = data.sha;
                 db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
                 
-                // MIGRATION LOGIC: Convert [name, spec] to {name, spec, phone}
+                // Ensure data is in object format
                 db.names = db.names.map(entry => {
                     if (Array.isArray(entry)) return { name: entry[0], spec: entry[1], phone: "" };
                     return entry;
@@ -122,21 +135,22 @@
             residents.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
 
             const header = document.createElement('div');
-            header.className = "spec-header px-5 py-2 text-[9px] font-black uppercase text-amber-500/80 flex justify-between";
+            header.className = "spec-header px-5 py-2 text-[9px] font-black uppercase text-amber-500/80 flex flex-row-reverse justify-between";
             header.innerHTML = `<span>${spec.name}</span><span>${residents.length}</span>`;
             list.appendChild(header);
 
             residents.forEach(res => {
                 const row = document.createElement('div');
-                row.className = "resident-row px-5 py-4 flex justify-between items-center";
+                // flex-row-reverse puts content on right, buttons on left
+                row.className = "resident-row px-5 py-4 flex flex-row-reverse justify-between items-center";
                 row.innerHTML = `
-                    <div class="flex flex-col">
-                        <span class="text-white font-bold text-sm">${res.name}</span>
-                        <span class="text-[10px] text-slate-500 font-mono">${res.phone || 'No Phone Registered'}</span>
+                    <div class="flex flex-col text-right">
+                        <span class="text-white font-bold text-sm underline decoration-amber-500/20 underline-offset-4">${res.name}</span>
+                        <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${res.phone || 'No Phone'}</span>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="editResident(${res.idx})" class="text-[9px] font-bold text-blue-400 uppercase px-3 py-1.5 border border-blue-400/20 rounded-lg">Edit</button>
-                        <button onclick="deleteResident(${res.idx})" class="text-[9px] font-bold text-red-400 uppercase px-3 py-1.5 border border-red-400/20 rounded-lg">Delete</button>
+                        <button onclick="deleteResident(${res.idx})" class="text-[9px] font-bold text-red-500 uppercase px-3 py-1.5 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-lg transition-all">Delete</button>
+                        <button onclick="editResident(${res.idx})" class="text-[9px] font-bold text-blue-400 uppercase px-3 py-1.5 bg-blue-400/5 hover:bg-blue-400/10 border border-blue-400/20 rounded-lg transition-all">Edit</button>
                     </div>
                 `;
                 list.appendChild(row);
@@ -147,9 +161,13 @@
 
     function addResident() {
         const name = document.getElementById('new-name').value.trim();
-        const phone = document.getElementById('new-phone').value.trim();
+        const rawPhone = document.getElementById('new-phone').value.trim();
         const spec = document.getElementById('new-spec').value;
+        
         if (!name) return;
+        
+        const phone = formatIraqiPhone(rawPhone);
+        
         db.names.push({ name, spec, phone });
         document.getElementById('new-name').value = "";
         document.getElementById('new-phone').value = "";
@@ -159,10 +177,13 @@
     function editResident(index) {
         const res = db.names[index];
         const newName = prompt("Edit Name:", res.name);
-        const newPhone = prompt("Edit Phone:", res.phone || "");
+        const newPhoneRaw = prompt("Edit Phone:", res.phone || "");
+        
         if (newName !== null) {
             db.names[index].name = newName.trim();
-            db.names[index].phone = (newPhone !== null) ? newPhone.trim() : res.phone;
+            if (newPhoneRaw !== null) {
+                db.names[index].phone = formatIraqiPhone(newPhoneRaw.trim());
+            }
             renderResidents();
         }
     }
@@ -176,11 +197,11 @@
 
     async function saveToGithub() {
         const btn = document.getElementById('save-btn');
-        btn.innerText = "Saving...";
+        btn.innerText = "Syncing...";
         document.body.classList.add('is-loading');
         try {
             const body = { 
-                message: "Update Database (Incl. Phone Numbers) 🇮🇶", 
+                message: "Format Phone Numbers & RTL Update 🇮🇶", 
                 content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
                 sha: fileSha 
             };
@@ -192,10 +213,10 @@
             if (res.ok) {
                 const updated = await res.json();
                 fileSha = updated.content.sha;
-                alert("Saved Successfully! ✅");
+                alert("Database Sync Complete! ✅");
             }
-        } catch (e) { alert("Error saving."); }
-        btn.innerText = "Save to GH";
+        } catch (e) { alert("Sync Error."); }
+        btn.innerText = "Save Changes";
         document.body.classList.remove('is-loading');
     }
 </script>
