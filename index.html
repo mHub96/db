@@ -21,11 +21,11 @@
         .track-header { padding: 1rem; text-align: center; border-bottom: 3px solid var(--spec-color); }
         .track-header h2 { color: var(--spec-color); font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
         .days-list { flex: 1; overflow-y: auto; padding: 0.6rem; scrollbar-width: none; }
-        .day-box { background: rgba(255,255,255,0.02); margin-bottom: 0.5rem; border-radius: 0.9rem; padding: 0.6rem; border: 1px solid transparent; transition: all 0.2s; }
+        .day-box { background: rgba(255,255,255,0.02); margin-bottom: 0.5rem; border-radius: 0.9rem; padding: 0.6rem; border: 1px solid transparent; }
         .day-box.weekend { background: rgba(255,255,255,0.07); border-left: 4px solid var(--spec-color); }
         .day-label { display: flex; justify-content: space-between; font-size: 0.65rem; font-weight: 700; color: #64748b; margin-bottom: 4px; }
         .input-wrapper { position: relative; width: 100%; direction: rtl; }
-        .cell-input { width: 100%; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: 0.95rem; padding: 0.5rem; text-align: right; background: transparent; border: none; outline: none; color: #fff; cursor: pointer; }
+        .cell-input { width: 100%; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: 0.95rem; padding: 0.5rem; text-align: right; background: transparent; border: none; outline: none; color: #fff; }
         .ghost-text { position: absolute; top: 0; right: 0; color: rgba(255,255,255,0.15); pointer-events: none; height: 100%; width: 100%; display: flex; align-items: center; padding-right: 0.5rem; text-align: right; direction: rtl; }
         .prefilled { color: var(--spec-color) !important; font-weight: 600; }
         .nav-bar { height: var(--nav-h); padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; background: #111418; border-bottom: 1px solid rgba(255,255,255,0.1); }
@@ -104,7 +104,7 @@
             }
             updateNameLookup();
             refreshView();
-        } catch (e) { console.error("Initialization error:", e); }
+        } catch (e) { console.error("Init failed:", e); }
         document.getElementById('app-wrapper').classList.remove('loading-active');
     }
 
@@ -158,12 +158,6 @@
                 if (input) { 
                     input.value = row.name; 
                     input.classList.add('prefilled');
-                    input.onclick = () => {
-                        const doc = db.names.find(n => n[0] === row.name);
-                        if(doc && doc[2]) {
-                           if(confirm(`Call ${row.name}?\n${doc[2]}`)) window.location.href = `tel:${doc[2]}`;
-                        }
-                    };
                 }
             }
         });
@@ -187,7 +181,7 @@
     }
 
     async function migrateFromGoogle() {
-        if (!GH_TOKEN) return alert("Please login first to migrate data.");
+        if (!GH_TOKEN) return alert("Login first! 🇮🇶");
         const btn = document.getElementById('migrate-btn');
         btn.innerText = "MIGRATING...";
         try {
@@ -196,16 +190,16 @@
             db.names = result.names;
             db.schedule = result.schedule;
             await saveToGithub();
-            alert("Data migrated and synced to GitHub successfully! 🇮🇶");
+            alert("Success! 🇮🇶");
             location.reload();
-        } catch (e) { alert("Migration failed: " + e.message); }
+        } catch (e) { alert("Error: " + e.message); }
         btn.innerText = "Migrate";
     }
 
     async function saveToGithub() {
-        if (!GH_TOKEN) return alert("Login with GitHub token to sync.");
+        if (!GH_TOKEN) return alert("Login first!");
         const btn = document.getElementById('sync-btn');
-        btn.innerText = "Saving...";
+        btn.innerText = "...";
         const inputs = Array.from(document.querySelectorAll('.cell-input')).filter(i => i.value.trim() !== "");
         const currentData = inputs.map(i => ({ date: i.dataset.date, specCode: i.dataset.spec, name: i.value.trim() }));
         const [yr, mon] = document.getElementById('month-picker').value.split('-');
@@ -219,9 +213,9 @@
             if (res.ok) {
                 const r = await res.json();
                 fileSha = r.content.sha;
-                btn.innerText = "Synced ✅";
-            } else { throw new Error("Sync failed"); }
-        } catch(e) { btn.innerText = "Sync Error"; }
+                btn.innerText = "OK ✅";
+            }
+        } catch(e) { btn.innerText = "ERR"; }
         setTimeout(() => btn.innerText = "Sync", 2000);
     }
 </script>
