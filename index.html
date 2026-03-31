@@ -51,7 +51,7 @@
     const CONFIG = {
         user: "mHub96",
         repo: "db",
-        path: "data.json", // Ensure this is EXACTLY the name in your GitHub
+        path: "data.json",
         googleUrl: "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec"
     };
 
@@ -72,11 +72,12 @@
     window.onload = () => {
         const d = new Date();
         document.getElementById('month-picker').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        init();
+        generateBoard(); // Show the columns immediately
+        if (GH_TOKEN) init();
     };
 
     function login() {
-        const t = prompt("Paste your NEW Token here 🇮🇶:");
+        const t = prompt("Paste your Token (ghp_...) 🇮🇶:");
         if (t) { 
             localStorage.setItem('gh_token', t.trim()); 
             location.reload(); 
@@ -84,16 +85,10 @@
     }
 
     async function init() {
-        if (!GH_TOKEN) return;
-        
-        const wrapper = document.getElementById('app-wrapper');
-        wrapper.classList.add('loading-active');
-
         try {
-            // Added a timestamp to the URL to prevent "Old Cache" errors
-            const url = `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`;
-            
+            const url = `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`;
             const res = await fetch(url, {
+                method: "GET",
                 headers: { 
                     "Authorization": `token ${GH_TOKEN}`,
                     "Accept": "application/vnd.github.v3+json"
@@ -101,46 +96,57 @@
             });
 
             if (!res.ok) {
-                if(res.status === 401) alert("Token Expired. Click Login again.");
-                if(res.status === 404) alert("data.json not found in GitHub.");
+                if (res.status === 401) alert("Token Invalid. Please re-Login.");
                 return;
             }
 
             const data = await res.json();
             fileSha = data.sha;
             
-            // This is the part that usually causes the "CRITICAL ERROR"
-            // We use a more robust way to decode Arabic characters from GitHub
-            const decoded = decodeURIComponent(atob(data.content).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-
+            // Safe Decoding for Arabic
+            const raw = atob(data.content.replace(/\s/g, ''));
+            const decoded = decodeURIComponent(escape(raw));
             db = JSON.parse(decoded);
 
-            // Re-map the names for your UI
+            // Setup Autocomplete
             specs.forEach(s => {
-                if (s.id === "OP" || s.id === "ICU") nameLookup[s.id] = (db.names || []).filter(x => x[1] === "A").map(x => x[0]);
-                else if (s.id === "D") nameLookup[s.id] = (db.names || []).map(x => x[0]);
-                else nameLookup[s.id] = (db.names || []).filter(x => x[1] === s.id).map(x => x[0]);
+                const allNames = db.names || [];
+                if (s.id === "OP" || s.id === "ICU") nameLookup[s.id] = allNames.filter(x => x[1] === "A").map(x => x[0]);
+                else if (s.id === "D") nameLookup[s.id] = allNames.map(x => x[0]);
+                else nameLookup[s.id] = allNames.filter(x => x[1] === s.id).map(x => x[0]);
             });
 
-            refreshView();
+            renderData();
         } catch (e) {
-            console.error("Internal Error:", e);
-            // If the file is EMPTY ({}), it crashes here. 
-            // Let's force it to initialize if it's empty.
-            if(e.message.includes("JSON")) {
-                db = { names: [], schedule: [] };
-                refreshView();
-            } else {
-                alert("Connection Blocked. Try clicking Login and re-pasting the token.");
-            }
-        } finally {
-            wrapper.classList.remove('loading-active');
+            console.error(e);
         }
     }
 
-    // ... (Keep your refreshView, generateBoard, and migrateFromGoogle functions as they are)
+    // --- RE-ADDING THE MIGRATION FUNCTION ---
+    async function migrateFromGoogle() {
+        if (!GH_TOKEN) return alert("Login first!");
+        const btn = document.getElementById('sync-btn');
+        btn.innerText = "WAIT...";
+        
+        try {
+            const [nRes, sRes] = await Promise.all([
+                fetch(`${CONFIG.googleUrl}?action=getNames`),
+                fetch(`${CONFIG.googleUrl}?action=getSchedule&month=${document.getElementById('month-picker').value}`)
+            ]);
+            
+            db.names = await nRes.json();
+            db.schedule = await sRes.json();
+            
+            // Push this new data to GitHub
+            await saveToGithub();
+            alert("Success! Everything is moved to GitHub. 🇮🇶");
+            location.reload();
+        } catch(e) {
+            alert("Migration failed. Make sure your Google Script is still active.");
+        }
+    }
+
+    // ... (Keep the rest of your UI functions like generateBoard and saveToGithub)
 </script>
 </body>
 </html>
