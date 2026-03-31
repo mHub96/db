@@ -21,11 +21,11 @@
         .track-header { padding: 1rem; text-align: center; border-bottom: 3px solid var(--spec-color); }
         .track-header h2 { color: var(--spec-color); font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
         .days-list { flex: 1; overflow-y: auto; padding: 0.6rem; scrollbar-width: none; }
-        .day-box { background: rgba(255,255,255,0.02); margin-bottom: 0.5rem; border-radius: 0.9rem; padding: 0.6rem; border: 1px solid transparent; }
+        .day-box { background: rgba(255,255,255,0.02); margin-bottom: 0.5rem; border-radius: 0.9rem; padding: 0.6rem; border: 1px solid transparent; transition: all 0.2s; }
         .day-box.weekend { background: rgba(255,255,255,0.07); border-left: 4px solid var(--spec-color); }
         .day-label { display: flex; justify-content: space-between; font-size: 0.65rem; font-weight: 700; color: #64748b; margin-bottom: 4px; }
         .input-wrapper { position: relative; width: 100%; direction: rtl; }
-        .cell-input { width: 100%; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: 0.95rem; padding: 0.5rem; text-align: right; background: transparent; border: none; outline: none; color: #fff; }
+        .cell-input { width: 100%; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: 0.95rem; padding: 0.5rem; text-align: right; background: transparent; border: none; outline: none; color: #fff; cursor: pointer; }
         .ghost-text { position: absolute; top: 0; right: 0; color: rgba(255,255,255,0.15); pointer-events: none; height: 100%; width: 100%; display: flex; align-items: center; padding-right: 0.5rem; text-align: right; direction: rtl; }
         .prefilled { color: var(--spec-color) !important; font-weight: 600; }
         .nav-bar { height: var(--nav-h); padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; background: #111418; border-bottom: 1px solid rgba(255,255,255,0.1); }
@@ -52,6 +52,7 @@
         user: "mHub96",
         repo: "db",
         path: "data.json",
+        rawUrl: "https://raw.githubusercontent.com/mHub96/db/main/data.json",
         googleUrl: "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec"
     };
 
@@ -84,23 +85,26 @@
     }
 
     async function init() {
-        if (!GH_TOKEN) return;
         document.getElementById('app-wrapper').classList.add('loading-active');
         try {
-            const url = `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`;
-            const res = await fetch(url, {
-                headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                fileSha = data.sha;
-                const raw = atob(data.content.replace(/\s/g, ''));
-                db = JSON.parse(decodeURIComponent(escape(raw)));
-                updateNameLookup();
-                refreshView();
+            if (!GH_TOKEN) {
+                const res = await fetch(`${CONFIG.rawUrl}?t=${Date.now()}`);
+                db = await res.json();
+            } else {
+                const url = `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`;
+                const res = await fetch(url, {
+                    headers: { "Authorization": `token ${GH_TOKEN}`, "Accept": "application/vnd.github.v3+json" }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    fileSha = data.sha;
+                    const raw = atob(data.content.replace(/\s/g, ''));
+                    db = JSON.parse(decodeURIComponent(escape(raw)));
+                }
             }
-        } catch (e) { console.error("Init failed:", e); }
+            updateNameLookup();
+            refreshView();
+        } catch (e) { console.error("Initialization error:", e); }
         document.getElementById('app-wrapper').classList.remove('loading-active');
     }
 
@@ -151,7 +155,16 @@
             if (row.date.endsWith(`${mon}/${yr}`)) {
                 const day = parseInt(row.date.split('/')[0]);
                 const input = document.getElementById(`input-${day}-${row.specCode}`);
-                if (input) { input.value = row.name; input.classList.add('prefilled'); }
+                if (input) { 
+                    input.value = row.name; 
+                    input.classList.add('prefilled');
+                    input.onclick = () => {
+                        const doc = db.names.find(n => n[0] === row.name);
+                        if(doc && doc[2]) {
+                           if(confirm(`Call ${row.name}?\n${doc[2]}`)) window.location.href = `tel:${doc[2]}`;
+                        }
+                    };
+                }
             }
         });
     }
@@ -174,53 +187,29 @@
     }
 
     async function migrateFromGoogle() {
-    if (!GH_TOKEN) return alert("Please Login first! 🇮🇶");
-    
-    const btn = document.getElementById('migrate-btn');
-    const originalText = btn.innerText;
-    btn.innerText = "MIGRATING... ⏳";
-    
-    try {
-        // This calls the specific migration route we just fixed in your Apps Script
-        const res = await fetch(`${CONFIG.googleUrl}?action=migrate`);
-        const result = await res.json();
-
-        if (result.error) {
-            throw new Error(result.error);
-        }
-
-        // result.names contains all columns (Name, Code, Phone, etc.)
-        // result.schedule contains all rows from the SCHEDULE sheet
-        db.names = result.names;
-        db.schedule = result.schedule;
-
-        console.log("Migration successful, saving to GitHub...", db);
-
-        // Save the combined data to your GitHub data.json
-        await saveToGithub();
-        
-        alert("Success! Everything (Names, Phones, and Schedule) is now on GitHub. 🇮🇶");
-        location.reload();
-
-    } catch (e) {
-        console.error("Migration Error:", e);
-        alert("Migration failed: " + e.message);
-    } finally {
-        btn.innerText = originalText;
+        if (!GH_TOKEN) return alert("Please login first to migrate data.");
+        const btn = document.getElementById('migrate-btn');
+        btn.innerText = "MIGRATING...";
+        try {
+            const res = await fetch(`${CONFIG.googleUrl}?action=migrate`);
+            const result = await res.json();
+            db.names = result.names;
+            db.schedule = result.schedule;
+            await saveToGithub();
+            alert("Data migrated and synced to GitHub successfully! 🇮🇶");
+            location.reload();
+        } catch (e) { alert("Migration failed: " + e.message); }
+        btn.innerText = "Migrate";
     }
-}
 
     async function saveToGithub() {
-        if (!GH_TOKEN) return alert("Login first!");
+        if (!GH_TOKEN) return alert("Login with GitHub token to sync.");
         const btn = document.getElementById('sync-btn');
-        btn.innerText = "...";
-        
-        // Merge current UI changes into DB before saving
+        btn.innerText = "Saving...";
         const inputs = Array.from(document.querySelectorAll('.cell-input')).filter(i => i.value.trim() !== "");
         const currentData = inputs.map(i => ({ date: i.dataset.date, specCode: i.dataset.spec, name: i.value.trim() }));
         const [yr, mon] = document.getElementById('month-picker').value.split('-');
         db.schedule = [...(db.schedule || []).filter(r => !r.date.endsWith(`${mon}/${yr}`)), ...currentData];
-
         try {
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
                 method: "PUT",
@@ -230,9 +219,9 @@
             if (res.ok) {
                 const r = await res.json();
                 fileSha = r.content.sha;
-                btn.innerText = "OK ✅";
-            }
-        } catch(e) { btn.innerText = "ERR"; }
+                btn.innerText = "Synced ✅";
+            } else { throw new Error("Sync failed"); }
+        } catch(e) { btn.innerText = "Sync Error"; }
         setTimeout(() => btn.innerText = "Sync", 2000);
     }
 </script>
