@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SCHEDULER 🇮🇶</title>
+    <title>HOSPITAL SCHEDULER 🇮🇶</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #0b0e11; --card: #16191d; --column-width: 290px; --font-size: 0.9rem; --nav-h: 70px; }
+        :root { --bg: #0b0e11; --card: #16191d; --column-width: 300px; --nav-h: 70px; }
         .track-NS { --spec-color: #fbbf24; } .track-CT { --spec-color: #f87171; } 
         .track-GS { --spec-color: #34d399; } .track-US { --spec-color: #60a5fa; } 
         .track-ENT { --spec-color: #a78bfa; } .track-H { --spec-color: #fb7185; } 
@@ -16,51 +16,51 @@
         .track-ON { --spec-color: #f472b6; } 
 
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: #94a3b8; margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-        .board-container { flex-grow: 1; display: flex; gap: 1.5rem; padding: 1.5rem; overflow-x: auto; align-items: flex-start; height: calc(100vh - var(--nav-h)); }
-        .specialty-track { flex: 0 0 var(--column-width); background: var(--card); border-radius: 1.8rem; display: flex; flex-direction: column; max-height: 95%; border: 1px solid rgba(255,255,255,0.04); box-shadow: 0 20px 40px -15px rgba(0,0,0,0.8), 0 0 15px -5px var(--spec-color); overflow: hidden; }
-        .track-header { padding: 1.2rem; text-align: center; border-bottom: 3px solid var(--spec-color); }
-        .track-header h2 { color: var(--spec-color); font-weight: 900; font-size: 0.75rem; text-transform: uppercase; }
-        .days-list { flex: 1; overflow-y: auto; padding: 0.75rem; scrollbar-width: none; }
-        .day-box { position: relative; background: rgba(255,255,255,0.02); margin-bottom: 0.5rem; border-radius: 0.9rem; padding: 0.4rem; border: 1px solid transparent; }
-        .day-box.weekend { background: rgba(255,255,255,0.05); border-left: 3px solid var(--spec-color); }
-        .day-label { display: flex; justify-content: space-between; font-size: 0.6rem; font-weight: 800; color: #4b5563; padding: 0 0.5rem; }
+        .board-container { flex-grow: 1; display: flex; gap: 1rem; padding: 1rem; overflow-x: auto; align-items: flex-start; }
+        .specialty-track { flex: 0 0 var(--column-width); background: var(--card); border-radius: 1.5rem; display: flex; flex-direction: column; max-height: 95%; border: 1px solid rgba(255,255,255,0.05); }
+        .track-header { padding: 1rem; text-align: center; border-bottom: 3px solid var(--spec-color); }
+        .track-header h2 { color: var(--spec-color); font-weight: 800; font-size: 0.8rem; text-transform: uppercase; }
+        .days-list { flex: 1; overflow-y: auto; padding: 0.5rem; scrollbar-width: none; }
+        .day-box { background: rgba(255,255,255,0.02); margin-bottom: 0.4rem; border-radius: 0.8rem; padding: 0.5rem; border: 1px solid transparent; }
+        .day-box.weekend { background: rgba(255,255,255,0.06); border-left: 3px solid var(--spec-color); }
+        .day-label { display: flex; justify-content: space-between; font-size: 0.65rem; font-weight: 700; color: #64748b; margin-bottom: 2px; }
         .input-wrapper { position: relative; width: 100%; direction: rtl; }
-        .cell-input { width: 100%; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: var(--font-size); padding: 0.6rem; text-align: right; background: transparent; border: none; outline: none; color: #fff; z-index: 10; position: relative; }
-        .ghost-text { position: absolute; top: 0; right: 0; color: rgba(255,255,255,0.1); pointer-events: none; height: 100%; width: 100%; display: flex; align-items: center; padding-right: 0.6rem; text-align: right; direction: rtl; }
-        .dropdown-arrow { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.5rem; color: #334155; cursor: pointer; z-index: 25; }
+        .cell-input { width: 100%; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: 0.95rem; padding: 0.5rem; text-align: right; background: transparent; border: none; outline: none; color: #fff; }
+        .ghost-text { position: absolute; top: 0; right: 0; color: rgba(255,255,255,0.15); pointer-events: none; height: 100%; width: 100%; display: flex; align-items: center; padding-right: 0.5rem; text-align: right; direction: rtl; }
         .prefilled { color: var(--spec-color) !important; font-weight: 600; }
-        .custom-menu { position: absolute; top: 100%; right: 0; width: 100%; max-height: 180px; overflow-y: auto; background: #1c1f26; border: 1px solid var(--spec-color); border-radius: 0.6rem; z-index: 1000; display: none; }
-        .custom-menu div { padding: 0.8rem; font-size: 0.8rem; text-align: right; cursor: pointer; color: #94a3b8; }
-        .custom-menu div:hover { background: var(--spec-color); color: #000; }
-        .nav-bar { height: var(--nav-h); padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; background: #111418; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        #app-wrapper { transition: opacity 0.4s ease; }
-        .loading-active { opacity: 0.3 !important; pointer-events: none !important; cursor: wait; }
+        .nav-bar { height: var(--nav-h); padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; background: #111418; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .loading-active { opacity: 0.4; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="app-wrapper">
         <div class="nav-bar">
-            <h1 class="text-lg font-black text-white uppercase tracking-tighter">Teaching Hosp. Scheduler 🇮🇶</h1>
-            <div class="flex gap-2 items-center">
-                <input type="month" id="month-picker" class="bg-black text-amber-500 px-2 py-1.5 rounded-lg font-bold border border-white/10 text-[10px]" onchange="handleMonthChange()">
-                <button onclick="saveAll()" id="sync-btn" class="bg-white text-black px-4 py-2 rounded-lg font-black text-[10px] uppercase">Sync</button>
-                <button onclick="setToken()" class="bg-blue-600 text-white px-2 py-2 rounded-lg font-black text-[10px] uppercase">Login</button>
+            <h1 class="text-white font-black text-sm tracking-tight">SCHEDULER 🇮🇶</h1>
+            <div class="flex gap-2">
+                <input type="month" id="month-picker" class="bg-black text-amber-500 px-2 py-1 rounded border border-white/10 text-xs" onchange="refreshView()">
+                <button onclick="saveToGithub()" id="sync-btn" class="bg-white text-black px-3 py-1 rounded font-bold text-[10px] uppercase">Sync</button>
+                <button onclick="migrateFromGoogle()" class="bg-green-600 text-white px-3 py-1 rounded font-bold text-[10px] uppercase">Migrate</button>
+                <button onclick="login()" class="bg-blue-600 text-white px-3 py-1 rounded font-bold text-[10px] uppercase">Login</button>
             </div>
         </div>
         <div class="board-container" id="board"></div>
     </div>
 
 <script>
-    const GH_USER = "mHub96";
-    const GH_REPO = "db";
-    const GH_PATH = "data.json";
-    let GH_TOKEN = localStorage.getItem('gh_token');
-    let fileSha = "";
-    let fullDatabase = { names: [], schedule: [] };
-    let nameData = {};
+    const CONFIG = {
+        user: "mHub96",
+        repo: "db",
+        path: "data.json",
+        googleUrl: "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec"
+    };
 
-    const specialties = [
+    let GH_TOKEN = localStorage.getItem('gh_token');
+    let db = { names: [], schedule: [] };
+    let fileSha = "";
+    let nameLookup = {};
+
+    const specs = [
         { id: "NS", name: "Neurosurgery" }, { id: "CT", name: "Cardiothoracic" },
         { id: "GS", name: "General Surg" }, { id: "US", name: "Urosurgery" },
         { id: "ENT", name: "ENT Dept" }, { id: "H", name: "Cardiology" },
@@ -70,157 +70,153 @@
     ];
 
     window.onload = () => {
-        const now = new Date();
-        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-        document.getElementById('month-picker').value = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`;
-        generateBoard();
-        initSync();
+        const d = new Date();
+        document.getElementById('month-picker').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        init();
     };
 
-    function setToken() {
-        const t = prompt("Enter GitHub Token:");
-        if(t) { localStorage.setItem('gh_token', t); location.reload(); }
+    function login() {
+        const t = prompt("Paste GitHub Token:");
+        if (t) { localStorage.setItem('gh_token', t); location.reload(); }
     }
 
-    async function initSync() {
-        if (!GH_TOKEN) { console.log("No token found."); return; }
+    async function init() {
+        if (!GH_TOKEN) return alert("Please click 'Login' to connect GitHub.");
+        
         document.getElementById('app-wrapper').classList.add('loading-active');
         try {
-            const res = await fetch(`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_PATH}`, {
-                headers: { "Authorization": `token ${GH_TOKEN}` }
-            });
-            const data = await res.json();
-            fileSha = data.sha;
-            fullDatabase = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-            
-            // Map names for autocomplete
-            specialties.forEach(s => {
-                if (s.id === "OP" || s.id === "ICU") nameData[s.id] = (fullDatabase.names || []).filter(x => x[1] === "A").map(x => x[0]);
-                else if (s.id === "D") nameData[s.id] = (fullDatabase.names || []).map(x => x[0]);
-                else nameData[s.id] = (fullDatabase.names || []).filter(x => x[1] === s.id).map(x => x[0]);
+            const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
+                headers: { "Authorization": `token ${GH_TOKEN}`, "Cache-Control": "no-cache" }
             });
 
-            renderSchedule();
-        } catch(e) { alert("Auth Error. Click Login."); }
-        document.getElementById('app-wrapper').classList.remove('loading-active');
+            if (!res.ok) throw new Error("GitHub error: " + res.status);
+
+            const data = await res.json();
+            fileSha = data.sha;
+            db = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+
+            // Build Autocomplete Maps
+            specs.forEach(s => {
+                if (s.id === "OP" || s.id === "ICU") nameLookup[s.id] = db.names.filter(x => x[1] === "A").map(x => x[0]);
+                else if (s.id === "D") nameLookup[s.id] = db.names.map(x => x[0]);
+                else nameLookup[s.id] = db.names.filter(x => x[1] === s.id).map(x => x[0]);
+            });
+
+            refreshView();
+        } catch (e) {
+            console.error(e);
+            alert("Connection Failed. Check Token.");
+        } finally {
+            document.getElementById('app-wrapper').classList.remove('loading-active');
+        }
+    }
+
+    function refreshView() {
+        generateBoard();
+        renderData();
     }
 
     function generateBoard() {
-        const [year, month] = document.getElementById('month-picker').value.split('-').map(Number);
-        const daysInMonth = new Date(year, month, 0).getDate();
-        const board = document.getElementById('board');
-        board.innerHTML = "";
-        specialties.forEach(spec => {
+        const [yr, mon] = document.getElementById('month-picker').value.split('-').map(Number);
+        const days = new Date(yr, mon, 0).getDate();
+        const container = document.getElementById('board');
+        container.innerHTML = "";
+
+        specs.forEach(s => {
             const track = document.createElement('div');
-            track.className = `specialty-track track-${spec.id}`;
-            let html = `<div class="track-header"><h2>${spec.name}</h2></div><div class="days-list">`;
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateObj = new Date(year, month-1, d);
-                const dayName = new Intl.DateTimeFormat('ar-IQ', { weekday: 'short' }).format(dateObj);
-                const dateFull = `${String(d).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
-                const uid = `${d}-${spec.id}`;
-                html += `<div class="day-box ${dateObj.getDay() === 5 || dateObj.getDay() === 6 ? 'weekend' : ''}">
-                    <div class="day-label"><span>${dateFull.substring(0,5)}</span><span>${dayName}</span></div>
+            track.className = `specialty-track track-${s.id}`;
+            let html = `<div class="track-header"><h2>${s.name}</h2></div><div class="days-list">`;
+            
+            for (let d = 1; d <= days; d++) {
+                const dateObj = new Date(yr, mon - 1, d);
+                const isWE = dateObj.getDay() === 5 || dateObj.getDay() === 6;
+                const dateStr = `${String(d).padStart(2, '0')}/${String(mon).padStart(2, '0')}/${yr}`;
+                const id = `${d}-${s.id}`;
+                
+                html += `
+                <div class="day-box ${isWE ? 'weekend' : ''}">
+                    <div class="day-label"><span>${dateStr.substring(0,5)}</span><span>${new Intl.DateTimeFormat('ar-IQ', {weekday:'short'}).format(dateObj)}</span></div>
                     <div class="input-wrapper">
-                        <div class="ghost-text" id="ghost-${uid}"></div>
-                        <input type="text" class="cell-input" id="input-${uid}" oninput="handleAC(this, '${spec.id}', '${uid}')" onkeydown="handleKeys(event, this, '${uid}')" data-date="${dateFull}" data-spec="${spec.id}" autocomplete="off">
-                        <span class="dropdown-arrow" onclick="toggleMenu(event, '${uid}', '${spec.id}')">▼</span>
-                        <div class="custom-menu" id="menu-${uid}"></div>
-                    </div></div>`;
+                        <div class="ghost-text" id="ghost-${id}"></div>
+                        <input type="text" class="cell-input" id="input-${id}" 
+                            oninput="doAC(this, '${s.id}', '${id}')" 
+                            onkeydown="doKey(event, this, '${id}')"
+                            data-date="${dateStr}" data-spec="${s.id}" autocomplete="off">
+                    </div>
+                </div>`;
             }
             track.innerHTML = html + `</div>`;
-            board.appendChild(track);
+            container.appendChild(track);
         });
     }
 
-    function renderSchedule() {
-        const [targetYr, targetMon] = document.getElementById('month-picker').value.split('-');
-        (fullDatabase.schedule || []).forEach(row => {
-            const [d, mon, yr] = row.date.split('/');
-            if (mon === targetMon && yr === targetYr) {
-                const el = document.getElementById(`input-${parseInt(d)}-${row.specCode}`);
-                if (el) { el.value = row.name; el.classList.add('prefilled'); }
+    function renderData() {
+        const [yr, mon] = document.getElementById('month-picker').value.split('-');
+        db.schedule.forEach(row => {
+            if (row.date.endsWith(`${mon}/${yr}`)) {
+                const day = parseInt(row.date.split('/')[0]);
+                const input = document.getElementById(`input-${day}-${row.specCode}`);
+                if (input) { input.value = row.name; input.classList.add('prefilled'); }
             }
         });
     }
 
-    function handleAC(el, sid, uid) {
-        const ghost = document.getElementById(`ghost-${uid}`);
-        const val = el.value;
-        ghost.innerText = "";
-        if (!val.trim() || !nameData[sid]) return;
-        const match = nameData[sid].find(n => n.toLowerCase().startsWith(val.toLowerCase()));
-        if (match) {
-            ghost.innerText = match;
-            el.dataset.full = match;
-        }
+    function doAC(el, sid, id) {
+        const ghost = document.getElementById(`ghost-${id}`);
+        const val = el.value.trim();
+        ghost.innerText = ""; delete el.dataset.match;
+        if (!val || !nameLookup[sid]) return;
+        const found = nameLookup[sid].find(n => n.toLowerCase().includes(val.toLowerCase()));
+        if (found) { ghost.innerText = found; el.dataset.match = found; }
     }
 
-    function handleKeys(e, el, uid) {
-        if (e.key === "Enter" && el.dataset.full) {
-            el.value = el.dataset.full;
+    function doKey(e, el, id) {
+        if (e.key === "Enter" && el.dataset.match) {
+            el.value = el.dataset.match;
             el.classList.add('prefilled');
-            document.getElementById(`ghost-${uid}`).innerText = "";
+            document.getElementById(`ghost-${id}`).innerText = "";
         }
     }
 
-    function toggleMenu(e, uid, sid) {
-        e.stopPropagation();
-        const m = document.getElementById(`menu-${uid}`);
-        const open = m.style.display === "block";
-        document.querySelectorAll('.custom-menu').forEach(x => x.style.display = 'none');
-        if (!open) { 
-            m.innerHTML = (nameData[sid] || []).map(n => `<div onmousedown="selectName('${uid}', '${n}')">${n}</div>`).join(''); 
-            m.style.display = "block"; 
-        }
-    }
-
-    function selectName(uid, name) {
-        const i = document.getElementById(`input-${uid}`);
-        i.value = name; i.classList.add('prefilled');
-        document.getElementById(`ghost-${uid}`).innerText = "";
-        document.getElementById(`menu-${uid}`).style.display = 'none';
-    }
-
-    async function saveAll() {
-        if(!GH_TOKEN) return alert("Click Login first!");
+    async function saveToGithub() {
         const btn = document.getElementById('sync-btn');
-        btn.innerText = "...";
-        const inputs = Array.from(document.querySelectorAll('.cell-input')).filter(x => x.value.trim() !== "");
-        const currentMonthEntries = inputs.map(x => ({ date: x.dataset.date, specCode: x.dataset.spec, name: x.value.trim() }));
-        const [activeYr, activeMon] = document.getElementById('month-picker').value.split('-');
-        const otherData = fullDatabase.schedule.filter(row => !row.date.endsWith(`${activeMon}/${activeYr}`));
-        fullDatabase.schedule = [...otherData, ...currentMonthEntries];
+        btn.innerText = "WAIT";
+        
+        const inputs = Array.from(document.querySelectorAll('.cell-input')).filter(i => i.value.trim() !== "");
+        const currentData = inputs.map(i => ({ date: i.dataset.date, specCode: i.dataset.spec, name: i.value.trim() }));
+        
+        const [yr, mon] = document.getElementById('month-picker').value.split('-');
+        const otherMonths = db.schedule.filter(r => !r.date.endsWith(`${mon}/${yr}`));
+        db.schedule = [...otherMonths, ...currentData];
 
-        const content = btoa(unescape(encodeURIComponent(JSON.stringify(fullDatabase, null, 2))));
         try {
-            const res = await fetch(`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_PATH}`, {
+            const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
                 method: "PUT",
                 headers: { "Authorization": `token ${GH_TOKEN}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ message: "Update 🇮🇶", content: content, sha: fileSha })
+                body: JSON.stringify({ message: "Update 🇮🇶", content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), sha: fileSha })
             });
             if (res.ok) {
                 const r = await res.json();
                 fileSha = r.content.sha;
-                btn.innerText = "OK ✅";
+                btn.innerText = "DONE ✅";
             }
-        } catch(e) { btn.innerText = "Err"; }
+        } catch(e) { btn.innerText = "ERR"; }
         setTimeout(() => btn.innerText = "Sync", 2000);
     }
 
-    // --- MIGRATION TOOL ---
     async function migrateFromGoogle() {
-        const oldScriptUrl = "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec";
+        if (!confirm("Pull all data from Google Sheets?")) return;
         try {
-            const nameRes = await fetch(`${oldScriptUrl}?action=getNames`);
-            const names = await nameRes.json();
-            const schedRes = await fetch(`${oldScriptUrl}?action=getSchedule&month=${document.getElementById('month-picker').value}`);
-            const scheduleRaw = await schedRes.json();
-            fullDatabase.names = names;
-            fullDatabase.schedule = scheduleRaw;
-            await saveAll();
-            alert("Migration Done! 🇮🇶");
-        } catch (e) { alert("Failed. Check Console."); }
+            const [nRes, sRes] = await Promise.all([
+                fetch(`${CONFIG.googleUrl}?action=getNames`),
+                fetch(`${CONFIG.googleUrl}?action=getSchedule&month=${document.getElementById('month-picker').value}`)
+            ]);
+            db.names = await nRes.json();
+            db.schedule = await sRes.json();
+            await saveToGithub();
+            alert("Migration Complete! 🇮🇶");
+            location.reload();
+        } catch(e) { alert("Migration Error."); }
     }
 </script>
 </body>
