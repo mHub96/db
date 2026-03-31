@@ -233,6 +233,46 @@
             document.getElementById(`ghost-${uid}`).innerText = "";
         }, 250);
     }
+
+    async function migrateFromGoogleToGithub() {
+    const oldScriptUrl = "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec";
+    
+    console.log("Starting Migration... 🇮🇶");
+    lockUI();
+    
+    try {
+        // 1. Fetch Names from Google
+        const nameRes = await fetch(`${oldScriptUrl}?action=getNames`);
+        const names = await nameRes.json();
+        
+        // 2. Fetch Schedule from Google (Adjust 'month' to the one you have data in, e.g., 2026-04)
+        const currentMonth = document.getElementById('month-picker').value;
+        const schedRes = await fetch(`${oldScriptUrl}?action=getSchedule&month=${currentMonth}`);
+        const scheduleRaw = await schedRes.json();
+        
+        // 3. Format Schedule for GitHub
+        const formattedSchedule = scheduleRaw.map(row => ({
+            date: row.date,
+            specCode: row.specCode,
+            name: row.name
+        }));
+
+        // 4. Update our local Database object
+        fullDatabase.names = names;
+        fullDatabase.schedule = formattedSchedule;
+
+        // 5. Trigger a Save to GitHub
+        console.log("Data captured. Pushing to GitHub...");
+        await saveAll(); 
+        
+        alert("Migration Complete! Your GitHub 'data.json' is now the Master Database. 🇮🇶");
+    } catch (e) {
+        console.error("Migration Failed", e);
+        alert("Migration failed. Check console.");
+    } finally {
+        unlockUI();
+    }
+}
 </script>
 </body>
 </html>
