@@ -51,7 +51,7 @@
     const CONFIG = {
         user: "mHub96",
         repo: "db",
-        path: "data.json",
+        path: "data.json", // Ensure this is EXACTLY the name in your GitHub
         googleUrl: "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec"
     };
 
@@ -76,148 +76,65 @@
     };
 
     function login() {
-        const t = prompt("Paste GitHub Token:");
-        if (t) { localStorage.setItem('gh_token', t); location.reload(); }
+        const t = prompt("Paste your NEW Token here 🇮🇶:");
+        if (t) { 
+            localStorage.setItem('gh_token', t.trim()); 
+            location.reload(); 
+        }
     }
 
     async function init() {
-        if (!GH_TOKEN) return alert("Please click 'Login' to connect GitHub.");
+        if (!GH_TOKEN) {
+            alert("No Token Found. Please click the blue LOGIN button.");
+            return;
+        }
         
-        document.getElementById('app-wrapper').classList.add('loading-active');
+        const wrapper = document.getElementById('app-wrapper');
+        wrapper.classList.add('loading-active');
+
         try {
-            const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
-                headers: { "Authorization": `token ${GH_TOKEN}`, "Cache-Control": "no-cache" }
+            const url = `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`;
+            const res = await fetch(url, {
+                headers: { 
+                    "Authorization": `token ${GH_TOKEN}`,
+                    "Accept": "application/vnd.github.v3+json",
+                    "Cache-Control": "no-cache" 
+                }
             });
 
-            if (!res.ok) throw new Error("GitHub error: " + res.status);
+            if (res.status === 401) {
+                alert("🔴 TOKEN ERROR: Your token is invalid or expired. Please click LOGIN and paste the new one.");
+                localStorage.removeItem('gh_token');
+            } else if (res.status === 404) {
+                alert(`🔴 FILE ERROR: Could not find '${CONFIG.path}' in the repository '${CONFIG.repo}'. Check the spelling!`);
+            } else if (!res.ok) {
+                alert(`🔴 GITHUB ERROR: ${res.statusText}`);
+            } else {
+                const data = await res.json();
+                fileSha = data.sha;
+                // Decode the JSON content from GitHub Base64
+                const raw = atob(data.content.replace(/\s/g, ''));
+                db = JSON.parse(decodeURIComponent(escape(raw)));
 
-            const data = await res.json();
-            fileSha = data.sha;
-            db = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                // Map names for the UI
+                specs.forEach(s => {
+                    if (s.id === "OP" || s.id === "ICU") nameLookup[s.id] = (db.names || []).filter(x => x[1] === "A").map(x => x[0]);
+                    else if (s.id === "D") nameLookup[s.id] = (db.names || []).map(x => x[0]);
+                    else nameLookup[s.id] = (db.names || []).filter(x => x[1] === s.id).map(x => x[0]);
+                });
 
-            // Build Autocomplete Maps
-            specs.forEach(s => {
-                if (s.id === "OP" || s.id === "ICU") nameLookup[s.id] = db.names.filter(x => x[1] === "A").map(x => x[0]);
-                else if (s.id === "D") nameLookup[s.id] = db.names.map(x => x[0]);
-                else nameLookup[s.id] = db.names.filter(x => x[1] === s.id).map(x => x[0]);
-            });
-
-            refreshView();
+                refreshView();
+                console.log("✅ Connection Successful!");
+            }
         } catch (e) {
             console.error(e);
-            alert("Connection Failed. Check Token.");
+            alert("🔴 CRITICAL ERROR: Check your internet or browser console.");
         } finally {
-            document.getElementById('app-wrapper').classList.remove('loading-active');
+            wrapper.classList.remove('loading-active');
         }
     }
 
-    function refreshView() {
-        generateBoard();
-        renderData();
-    }
-
-    function generateBoard() {
-        const [yr, mon] = document.getElementById('month-picker').value.split('-').map(Number);
-        const days = new Date(yr, mon, 0).getDate();
-        const container = document.getElementById('board');
-        container.innerHTML = "";
-
-        specs.forEach(s => {
-            const track = document.createElement('div');
-            track.className = `specialty-track track-${s.id}`;
-            let html = `<div class="track-header"><h2>${s.name}</h2></div><div class="days-list">`;
-            
-            for (let d = 1; d <= days; d++) {
-                const dateObj = new Date(yr, mon - 1, d);
-                const isWE = dateObj.getDay() === 5 || dateObj.getDay() === 6;
-                const dateStr = `${String(d).padStart(2, '0')}/${String(mon).padStart(2, '0')}/${yr}`;
-                const id = `${d}-${s.id}`;
-                
-                html += `
-                <div class="day-box ${isWE ? 'weekend' : ''}">
-                    <div class="day-label"><span>${dateStr.substring(0,5)}</span><span>${new Intl.DateTimeFormat('ar-IQ', {weekday:'short'}).format(dateObj)}</span></div>
-                    <div class="input-wrapper">
-                        <div class="ghost-text" id="ghost-${id}"></div>
-                        <input type="text" class="cell-input" id="input-${id}" 
-                            oninput="doAC(this, '${s.id}', '${id}')" 
-                            onkeydown="doKey(event, this, '${id}')"
-                            data-date="${dateStr}" data-spec="${s.id}" autocomplete="off">
-                    </div>
-                </div>`;
-            }
-            track.innerHTML = html + `</div>`;
-            container.appendChild(track);
-        });
-    }
-
-    function renderData() {
-        const [yr, mon] = document.getElementById('month-picker').value.split('-');
-        db.schedule.forEach(row => {
-            if (row.date.endsWith(`${mon}/${yr}`)) {
-                const day = parseInt(row.date.split('/')[0]);
-                const input = document.getElementById(`input-${day}-${row.specCode}`);
-                if (input) { input.value = row.name; input.classList.add('prefilled'); }
-            }
-        });
-    }
-
-    function doAC(el, sid, id) {
-        const ghost = document.getElementById(`ghost-${id}`);
-        const val = el.value.trim();
-        ghost.innerText = ""; delete el.dataset.match;
-        if (!val || !nameLookup[sid]) return;
-        const found = nameLookup[sid].find(n => n.toLowerCase().includes(val.toLowerCase()));
-        if (found) { ghost.innerText = found; el.dataset.match = found; }
-    }
-
-    function doKey(e, el, id) {
-        if (e.key === "Enter" && el.dataset.match) {
-            el.value = el.dataset.match;
-            el.classList.add('prefilled');
-            document.getElementById(`ghost-${id}`).innerText = "";
-        }
-    }
-
-    async function saveToGithub() {
-        const btn = document.getElementById('sync-btn');
-        btn.innerText = "WAIT";
-        
-        const inputs = Array.from(document.querySelectorAll('.cell-input')).filter(i => i.value.trim() !== "");
-        const currentData = inputs.map(i => ({ date: i.dataset.date, specCode: i.dataset.spec, name: i.value.trim() }));
-        
-        const [yr, mon] = document.getElementById('month-picker').value.split('-');
-        const otherMonths = db.schedule.filter(r => !r.date.endsWith(`${mon}/${yr}`));
-        db.schedule = [...otherMonths, ...currentData];
-
-        try {
-            const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
-                method: "PUT",
-                headers: { "Authorization": `token ${GH_TOKEN}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ message: "Update 🇮🇶", content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), sha: fileSha })
-            });
-            if (res.ok) {
-                const r = await res.json();
-                fileSha = r.content.sha;
-                btn.innerText = "DONE ✅";
-            }
-        } catch(e) { btn.innerText = "ERR"; }
-        setTimeout(() => btn.innerText = "Sync", 2000);
-    }
-
-    async function migrateFromGoogle() {
-        if (!confirm("Pull all data from Google Sheets?")) return;
-        try {
-            const [nRes, sRes] = await Promise.all([
-                fetch(`${CONFIG.googleUrl}?action=getNames`),
-                fetch(`${CONFIG.googleUrl}?action=getSchedule&month=${document.getElementById('month-picker').value}`)
-            ]);
-            db.names = await nRes.json();
-            db.schedule = await sRes.json();
-            await saveToGithub();
-            alert("Migration Complete! 🇮🇶");
-            location.reload();
-        } catch(e) { alert("Migration Error."); }
-    }
+    // ... (Keep your refreshView, generateBoard, and migrateFromGoogle functions as they are)
 </script>
 </body>
 </html>
