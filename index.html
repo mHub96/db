@@ -93,13 +93,11 @@
         user: "mHub96", 
         repo: "db", 
         path: "data.json",
-        rawUrl: "https://raw.githubusercontent.com/mHub96/db/main/data.json",
         scriptUrl: "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec"
     };
 
-    // Your token is now "baked in" and encoded to stay under the radar
-    const ENCODED_TOKEN = "Z2hwX245VzI5QVZBOGh6czdwb2VhVmtGcXdlZlQxVW5ZRDFIZkpzUQ==";
-    const GH_TOKEN = atob(ENCODED_TOKEN); 
+    // DIRECT TOKEN USAGE (Warning: GitHub may revoke this upon push)
+    const GH_TOKEN = "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"; 
     
     let db = { names: [], schedule: [] };
     let fileSha = "";
@@ -135,7 +133,6 @@
     async function init() {
         document.getElementById('app-wrapper').classList.add('loading-active');
         try {
-            // Now always uses the GH_TOKEN for fresh data and SHA retrieval
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}?t=${Date.now()}`, {
                 headers: { 
                     "Authorization": `token ${GH_TOKEN}`, 
@@ -146,13 +143,14 @@
             if (res.ok) {
                 const data = await res.json();
                 fileSha = data.sha;
-                // Decode UTF-8 correctly for Arabic names
                 db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
                 
                 db.names = (db.names || []).map(item => {
                     if (Array.isArray(item)) return { name: item[0], spec: item[1] || "NS", phone: "" };
                     return item;
                 });
+            } else {
+                console.error("Fetch failed. Token might be revoked by GitHub.");
             }
             updateNameLookup();
             refreshView();
@@ -293,34 +291,6 @@
         }, 250);
     }
 
-    async function migrateFromGoogle() {
-        const btn = document.getElementById('migrate-btn');
-        btn.innerText = "Migrating...";
-        btn.disabled = true;
-
-        try {
-            const r = await fetch(`${CONFIG.scriptUrl}?action=migrate`);
-            const res = await r.json();
-            const sourceNames = res.names || res.residents || [];
-            db.names = sourceNames.map(row => ({
-                name: String(row[0]).trim(),
-                spec: String(row[1]).trim(),
-                phone: row[3] ? String(row[3]).trim() : ""
-            })).filter(x => x.name);
-
-            db.schedule = res.schedule || [];
-            await saveToGithub();
-            alert("Migration Successful! 🇮🇶 Reloading...");
-            location.reload();
-        } catch(e) { 
-            console.error(e);
-            alert("Migration failed."); 
-        } finally {
-            btn.innerText = "Migrate";
-            btn.disabled = false;
-        }
-    }
-
     async function saveToGithub() {
         const btn = document.getElementById('sync-btn');
         const oldText = btn.innerText;
@@ -354,7 +324,11 @@
                 const update = await res.json();
                 fileSha = update.content.sha;
                 btn.innerText = "Synced ✅";
-            } else { btn.innerText = "Sync Error ❌"; }
+            } else { 
+                const err = await res.json();
+                alert("Error: " + err.message);
+                btn.innerText = "Sync Error ❌"; 
+            }
         } catch(e) { btn.innerText = "Error"; }
         setTimeout(() => btn.innerText = oldText, 2000);
     }
