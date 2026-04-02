@@ -128,17 +128,36 @@
 
 <script>
     const CONFIG = { user: "mHub96", repo: "s", path: "data.json" };
+    // Token reconstruction logic
     const GH_TOKEN = "ghp_dAUtsFhTH" + "a2KeJQOsxsC" + "Ct1vz8z1Z63" + "Am" + "sjS".replace(/\s/g, '');
     
-    const arabicSpecs = { "NS": "جراحة الجملة العصبية", "CT": "جراحة القلب والصدر", "GS": "الجراحة العامة", "H": "أمراض القلب" };
+    const arabicSpecs = { 
+        "NS": "جراحة الجملة العصبية", 
+        "CT": "جراحة القلب والصدر", 
+        "GS": "الجراحة العامة", 
+        "US": "جراحة المسالك البولية",
+        "ENT": "الأنف والأذن والحنجرة",
+        "H": "أمراض القلب",
+        "ICU": "تخدير العناية المركزة",
+        "OP": "تخدير العمليات",
+        "R": "الأشعة و السونار",
+        "ON": "الأورام",
+        "D": "الوفيات"
+    };
     
     let db = { names: [], schedule: [] };
     let fileSha = "";
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get('mode');
-    const serviceParam = urlParams.get('service');
+    const serviceParam = urlParams.get('service'); // e.g., "CT" or "NS"
 
-    window.onload = async () => { await fetchData(); };
+    window.onload = async () => { 
+        await fetchData(); 
+        if (document.getElementById('shield')) {
+            document.getElementById('shield').style.opacity = '0';
+            setTimeout(() => document.getElementById('shield').remove(), 500);
+        }
+    };
 
     async function fetchData() {
         try {
@@ -155,16 +174,17 @@
         } catch (e) { document.getElementById('status-text').innerText = "OFFLINE"; }
     }
 
+    // THE MEDICAL DAY LOGIC (8AM TO 8AM)
     function getMedicalDate() {
         const now = new Date();
-        // Shift logic: If current time is 00:00 to 07:59, we are still on "yesterday's" shift.
+        // If current hour is between 0 and 7 (inclusive), look for yesterday's entry
         if (now.getHours() < 8) {
             now.setDate(now.getDate() - 1);
         }
         const d = String(now.getDate()).padStart(2, '0');
         const m = String(now.getMonth() + 1).padStart(2, '0');
         const y = now.getFullYear();
-        return `${d}/${m}/${y}`;
+        return `${d}/${m}/${y}`; // Matches "01/03/2026" format
     }
 
     function handleEntry() {
@@ -172,44 +192,71 @@
         const btn = document.getElementById('entry-btn');
         if (pin.value === "1234") {
             document.getElementById('login-view').classList.add('hidden');
-            if (mode === 'register') document.getElementById('register-view').classList.remove('hidden');
-            else { showLookupUI(); document.getElementById('lookup-view').classList.remove('hidden'); }
+            if (mode === 'register') {
+                document.getElementById('register-view').classList.remove('hidden');
+            } else { 
+                showLookupUI(); 
+                document.getElementById('lookup-view').classList.remove('hidden'); 
+            }
         } else {
             pin.value = "";
             btn.classList.add('crimson-warning');
-            const original = btn.innerText;
+            const originalText = btn.innerText;
             btn.innerText = "INCORRECT PIN";
-            setTimeout(() => { btn.classList.remove('crimson-warning'); btn.innerText = original; }, 1500);
+            setTimeout(() => { 
+                btn.classList.remove('crimson-warning'); 
+                btn.innerText = originalText; 
+            }, 1500);
         }
     }
 
     function showLookupUI() {
         const mDate = getMedicalDate();
         const now = new Date();
-        const timeStr = `${String(now.getDate()).padStart(2, '0')}-${now.toLocaleString('en-GB', {month:'short'})}-${now.getFullYear()} | ${now.toLocaleString('en-GB', {hour:'2-digit', minute:'2-digit', hour12:true}).toUpperCase()}`;
         
-        document.getElementById('time-stamp').innerText = timeStr;
+        // Lookup view timestamp: 03-Apr-2026 | 02:54 AM
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = now.toLocaleString('en-GB', { month: 'short' });
+        const year = now.getFullYear();
+        const time = now.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
+        const visitTimestamp = `${day}-${month}-${year} | ${time}`;
+        
+        document.getElementById('time-stamp').innerText = visitTimestamp;
         document.getElementById('service-display').innerText = arabicSpecs[serviceParam] || serviceParam || "SERVICE";
 
-        // FIND RESIDENT: Compare SpecCode and Date strictly
+        // Finding the resident in your "schedule" array
         const entry = db.schedule.find(s => s.specCode === serviceParam && s.date === mDate);
 
         if (entry) {
             const info = db.names.find(n => n.name === entry.name);
             document.getElementById('name-display').innerText = entry.name;
             document.getElementById('phone-display').innerText = info ? info.phone : "No Number";
-            if (info?.phone) {
+            document.getElementById('call-link').classList.remove('hidden');
+            if (info && info.phone) {
                 document.getElementById('call-link').href = "tel:" + info.phone;
                 document.getElementById('wa-link').classList.remove('hidden');
             }
         } else {
             document.getElementById('name-display').innerText = "No Duty Found";
-            document.getElementById('phone-display').innerText = "Medical Date: " + mDate;
+            // Show the date it searched for so you can verify why it's empty
+            document.getElementById('phone-display').innerText = "Date: " + mDate;
             document.getElementById('call-link').classList.add('hidden');
+            document.getElementById('wa-link').classList.add('hidden');
         }
     }
 
-    // REGISTRATION LOGIC (Abbreviated, keep your existing logic for prepNameInput, filterNames, submitRegistration)
+    function openWhatsApp(e) {
+        e.preventDefault();
+        const mDate = getMedicalDate();
+        const entry = db.schedule.find(s => s.specCode === serviceParam && s.date === mDate);
+        const info = db.names.find(n => n.name === entry?.name);
+        if (info && info.phone) {
+            // Remove '+' and spaces for WhatsApp URL
+            const cleanPhone = info.phone.replace(/\D/g, '');
+            window.location.href = "https://wa.me/" + cleanPhone;
+        }
+    }
 </script>
+
 </body>
 </html>
