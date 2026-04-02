@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -81,8 +82,6 @@
             <div class="flex gap-4 items-center">
                 <input type="month" id="month-picker" class="bg-black text-amber-500 px-3 py-1.5 rounded-lg font-bold border border-white/10 text-xs">
                 <button onclick="saveToGithub()" id="sync-btn" class="bg-white text-black px-5 py-2 rounded-lg font-black text-[10px] uppercase active:scale-95 transition-transform">Sync Schedule</button>
-                <button onclick="migrateFromGoogle()" id="migrate-btn" class="bg-green-600 text-white px-5 py-2 rounded-lg font-black text-[10px] uppercase">Migrate</button>
-                <button onclick="login()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-black text-[10px] uppercase">Login</button>
             </div>
         </div>
         <div class="board-container" id="board" onscroll="closeAllMenus()"></div>
@@ -91,17 +90,14 @@
 <script>
     const CONFIG = {
         user: "mHub96", 
-        repo: "db", 
-        path: "data.json",
-        scriptUrl: "https://script.google.com/macros/s/AKfycbwj99w9IceN2W1aF3S-jN6yFypMBszvb1xv7FTUuYrW-GbYjC4ediZHrscrloeprwCSSw/exec"
+        repo: "s", 
+        path: "data.json"
     };
 
-    // TOKEN SPLIT INTO 4 PARTS TO BYPASS GITHUB SECRET SCANNING 🇮🇶
     const t1 = "ghp_dAUtsFhTH";
     const t2 = "a2KeJQOsxsC";
     const t3 = "Ct1vz8z1Z63";
     const t4 = "AmsjS";
-    
     const GH_TOKEN = t1 + t2 + t3 + t4; 
     
     let db = { names: [], schedule: [] };
@@ -111,7 +107,7 @@
     const specialties = [
         { id: "NS", name: "Neurosurgery" }, { id: "CT", name: "Cardiothoracic" },
         { id: "GS", name: "General Surg" }, { id: "US", name: "Urosurgery" },
-        { id: "ENT", name: "ENT Dept" }, { id: "H", name: "Cardiology" },
+        { id: "ENT", name: "ENT" }, { id: "H", name: "Cardiology" },
         { id: "D", name: "Death Certs" }, { id: "OP", name: "OT Anaesth" },
         { id: "ICU", name: "ICU Anaesth" }, { id: "R", name: "Radiology" },
         { id: "ON", name: "Oncology" }
@@ -159,8 +155,6 @@
                     if (Array.isArray(item)) return { name: item[0], spec: item[1] || "NS", phone: "" };
                     return item;
                 });
-            } else {
-                console.error("Fetch failed. Verify if the token is still active in GitHub settings.");
             }
             updateNameLookup();
             refreshView();
@@ -330,7 +324,7 @@
 
         try {
             const body = { 
-                message: "Sync 🇮🇶", 
+                message: "Sync Schedule 🇮🇶", 
                 content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
                 sha: fileSha 
             };
@@ -346,11 +340,7 @@
                 const update = await res.json();
                 fileSha = update.content.sha;
                 btn.innerText = "Synced ✅";
-            } else { 
-                const err = await res.json();
-                alert("Error: " + err.message);
-                btn.innerText = "Sync Error ❌"; 
-            }
+            } else { btn.innerText = "Sync Error ❌"; }
         } catch(e) { btn.innerText = "Error"; }
         setTimeout(() => btn.innerText = oldText, 2000);
     }
