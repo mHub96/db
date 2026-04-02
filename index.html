@@ -60,6 +60,7 @@
         .btn-register { background: var(--btn-grey); color: #e2e8f0; }
         .fetched-active { background: var(--accent) !important; color: #1a1c20 !important; box-shadow: 0 0 25px rgba(251, 191, 36, 0.6) !important; }
 
+        /* Incorrect PIN Styles */
         .crimson-warning { background: var(--crimson) !important; color: white !important; animation: shake 0.4s both; }
         @keyframes shake {
             10%, 90% { transform: translate3d(-1px, 0, 0); }
@@ -101,7 +102,7 @@
         <div id="login-view">
             <div class="text-center mb-10">
                 <h1 class="text-white text-2xl font-extrabold tracking-tight">On-Call Portal</h1>
-                <p id="status-text" class="text-[0.6rem] mt-2 uppercase font-bold tracking-[0.3em] text-amber-500/60">Connecting...</p>
+                <p id="status-text" class="text-[0.6rem] mt-2 uppercase font-bold tracking-[0.3em] text-amber-500/60">Connecting Database...</p>
             </div>
             <div class="space-y-8">
                 <div class="recessed-input p-2">
@@ -161,7 +162,6 @@
 
 <script>
     const CONFIG = { user: "mHub96", repo: "s", path: "data.json" };
-    const _pt = "ghp_dAUtsFhTHa2KeJQOsxsCCt1vz8z1Z63Amsjs".replace(/s/g, ''); // Logic for token
     const GH_TOKEN = "ghp_dAUtsFhTH" + "a2KeJQOsxsC" + "Ct1vz8z1Z63" + "Am" + "sjS".replace(/\s/g, '');
 
     const arabicSpecs = {
@@ -175,7 +175,7 @@
     let fileSha = "";
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get('mode');
-    const service = urlParams.get('service');
+    const serviceCode = urlParams.get('service');
 
     window.onload = async () => {
         setTimeout(() => { document.getElementById('shield')?.remove(); }, 500);
@@ -197,13 +197,9 @@
         } catch (e) { console.error(e); }
     }
 
-    // HANDLES 8AM HANDOVER LOGIC
     function getMedicalDate() {
         const now = new Date();
-        // If before 8 AM, we want the resident who started yesterday
-        if (now.getHours() < 8) {
-            now.setDate(now.getDate() - 1);
-        }
+        if (now.getHours() < 8) now.setDate(now.getDate() - 1);
         return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
     }
 
@@ -221,14 +217,13 @@
                 card.style.opacity = "1";
             }, 600);
         } else {
-            // Error Visuals
             pin.value = "";
             btn.classList.add('crimson-warning');
-            const oldText = btn.innerText;
-            btn.innerText = "INCORRECT PIN";
+            const originalText = btn.innerText;
+            btn.innerText = "INCORRECT PIN!";
             setTimeout(() => {
                 btn.classList.remove('crimson-warning');
-                btn.innerText = oldText;
+                btn.innerText = originalText;
             }, 1500);
         }
     }
@@ -240,7 +235,6 @@
         if (!spec) { section.classList.add('hidden'); return; }
         document.getElementById('name-input').value = "";
         section.classList.remove('hidden');
-        
         if (spec === "ICU" || spec === "OP") currentPool = db.names.filter(n => n.spec === "A" && n.spec !== "RESERVE");
         else if (spec === "D") currentPool = db.names.filter(n => n.spec !== "RESERVE");
         else currentPool = db.names.filter(n => n.spec === spec && n.spec !== "RESERVE");
@@ -251,14 +245,7 @@
         const val = document.getElementById('name-input').value.trim().toLowerCase().replace(/^د\.?\s*/, '');
         const box = document.getElementById('suggestions');
         if (!val) { box.classList.add('hidden'); return; }
-
-        const matches = currentPool.filter(n => n.name.toLowerCase().replace(/^د\.?\s*/, '').includes(val))
-            .sort((a, b) => {
-                const aC = a.name.toLowerCase().replace(/^د\.?\s*/, '');
-                const bC = b.name.toLowerCase().replace(/^د\.?\s*/, '');
-                return aC.startsWith(val) && !bC.startsWith(val) ? -1 : 1;
-            });
-
+        const matches = currentPool.filter(n => n.name.toLowerCase().replace(/^د\.?\s*/, '').includes(val));
         if (matches.length > 0) {
             box.innerHTML = matches.map(m => `<div class="suggestion-item" onclick="selectSuggestion('${m.name}')">${m.name}</div>`).join('');
             box.classList.remove('hidden');
@@ -308,20 +295,16 @@
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
                 method: "PUT", headers: { "Authorization": `token ${GH_TOKEN}` }, body: JSON.stringify(body)
             });
-
             if (res.ok) {
                 const result = await res.json();
                 fileSha = result.content.sha;
                 card.classList.remove('loading-active');
                 btn.classList.add('fetched-active');
                 btn.innerText = "SUCCESS ✅";
-
                 setTimeout(() => {
-                    specSelect.value = "";
-                    nameInput.value = "";
+                    specSelect.value = ""; nameInput.value = "";
                     document.getElementById('name-section').classList.add('hidden');
-                    btn.classList.remove('fetched-active');
-                    btn.innerText = "UPDATE";
+                    btn.classList.remove('fetched-active'); btn.innerText = "UPDATE";
                 }, 2000);
             }
         } catch (e) { card.classList.remove('loading-active'); btn.innerText = "RETRY ❌"; }
@@ -330,16 +313,16 @@
     function showLookupUI() {
         const medicalDate = getMedicalDate();
         const now = new Date();
-        const timestamp = `${String(now.getDate()).padStart(2, '0')}-${now.toLocaleString('en-GB', { month: 'short' })}-${now.getFullYear()} | ${now.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase()}`;
+        const timestampStr = `${String(now.getDate()).padStart(2, '0')}-${now.toLocaleString('en-GB', { month: 'short' })}-${now.getFullYear()} | ${now.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase()}`;
         
-        document.getElementById('service-display').innerText = arabicSpecs[service] || service;
-        document.getElementById('time-stamp').innerText = timestamp;
+        document.getElementById('service-display').innerText = arabicSpecs[serviceCode] || serviceCode;
+        document.getElementById('time-stamp').innerText = timestampStr;
 
-        const todayResident = db.schedule.find(s => s.specCode === service && s.date === medicalDate);
+        const residentEntry = db.schedule.find(s => s.specCode === serviceCode && s.date === medicalDate);
 
-        if (todayResident) {
-            const info = db.names.find(n => n.name === todayResident.name);
-            document.getElementById('name-display').innerText = todayResident.name;
+        if (residentEntry) {
+            const info = db.names.find(n => n.name === residentEntry.name);
+            document.getElementById('name-display').innerText = residentEntry.name;
             document.getElementById('phone-display').innerText = info ? info.phone : "No Number";
             if (info?.phone) {
                 document.getElementById('call-link').href = "tel:" + info.phone;
@@ -349,14 +332,15 @@
             document.getElementById('name-display').innerText = "No Duty Found";
             document.getElementById('phone-display').innerText = medicalDate;
             document.getElementById('call-link').classList.add('hidden');
+            document.getElementById('wa-link').classList.add('hidden');
         }
     }
 
     function openWhatsApp(e) {
         e.preventDefault();
         const medicalDate = getMedicalDate();
-        const todayResident = db.schedule.find(s => s.specCode === service && s.date === medicalDate);
-        const info = db.names.find(n => n.name === todayResident?.name);
+        const res = db.schedule.find(s => s.specCode === serviceCode && s.date === medicalDate);
+        const info = db.names.find(n => n.name === res?.name);
         if (info?.phone) window.location.href = "whatsapp://send?phone=" + info.phone;
     }
 </script>
