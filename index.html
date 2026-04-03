@@ -212,13 +212,11 @@
         }
     }
 
-    function openWhatsApp(e) {
+function openWhatsApp(e) {
         e.preventDefault();
-        const name = document.getElementById('name-display').innerText;
-        const info = db.names.find(n => n.name === name);
-        if (info?.phone) {
-            window.location.href = "https://wa.me/" + info.phone.replace(/\D/g, '');
-        }
+        const info = db.names.find(n => n.name === todayResident.name);
+        if (info?.phone) window.location.href = "whatsapp://send?phone=" + info.phone;
+    }
     }
 </script>
 </body>
