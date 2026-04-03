@@ -13,7 +13,6 @@
         }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: #94a3b8; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
 
-        /* AESTHETICS: Breathing Neumorphic Card */
         .embossed-card {
             position: relative; background: var(--bg); border-radius: 3rem;
             box-shadow: 20px 20px 60px var(--shadow), -10px -10px 40px var(--light);
@@ -25,7 +24,6 @@
             50% { box-shadow: 15px 15px 45px var(--shadow), -8px -8px 30px var(--light), 0 0 50px rgba(251, 191, 36, 0.2); }
         }
 
-        /* AESTHETICS: Fluid Tube Path */
         .tube-container { position: absolute; inset: 0; pointer-events: none; z-index: 20; width: 100%; height: 100%; }
         #tube-bg { fill: none; stroke: rgba(251, 191, 36, 0.03); stroke-width: 4; }
         #tube-fluid {
@@ -51,7 +49,6 @@
 
         .fetched-active { background: var(--accent) !important; color: #1a1c20 !important; box-shadow: 0 0 25px rgba(251, 191, 36, 0.5) !important; }
 
-        /* FIX: Quick Crimson Shake for PIN Error */
         .crimson-warning { background: var(--crimson) !important; color: white !important; animation: quickShake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes quickShake {
             10%, 90% { transform: translate3d(-2px, 0, 0); }
@@ -61,7 +58,7 @@
 
         #shield { position: fixed; inset: 0; background: var(--bg); z-index: 100; transition: opacity 0.5s; }
         .hidden { display: none !important; }
-        .rtl-text { direction: rtl; text-align: right; }
+        .rtl-text { direction: rtl; text-align: center; }
         .phone-display { direction: ltr !important; unicode-bidi: isolate; display: inline-block; }
     </style>
 </head>
@@ -92,9 +89,11 @@
 
         <div id="lookup-view" class="hidden text-center">
             <div class="recessed-input inline-block px-6 py-4 mb-6">
-                <span id="service-display" class="text-amber-500 text-xl font-black uppercase">SERVICE</span>
+                <span id="service-display" class="text-amber-500 text-xl font-black uppercase">...</span>
             </div>
+            
             <h2 id="name-display" class="text-white text-3xl font-extrabold mb-1 rtl-text">...</h2>
+            
             <p id="phone-display" class="text-slate-500 font-bold text-lg mb-8 phone-display">-</p>
             
             <div class="flex flex-row gap-2 w-full">
@@ -109,12 +108,13 @@
     const CONFIG = { user: "mHub96", repo: "s", path: "data.json" };
     const GH_TOKEN = "ghp_dAUtsFhTH" + "a2KeJQOsxsC" + "Ct1vz8z1Z63" + "Am" + "sjS".replace(/\s/g, '');
 
+    // Full Arabic mapping for aesthetics
     const arabicSpecs = { 
-        "NS": "جراحة الجملة العصبية", 
-        "CT": "جراحة الصدر و الاوعية الدموية", 
-        "GS": "الجراحة العامة",
-        "US": "جراحة المسالك البولية",
-        "H": "أمراض القلب"
+        "NS": "جراحة الجملة العصبية", "CT": "جراحة الصدر و الاوعية الدموية", 
+        "GS": "الجراحة العامة", "US": "جراحة المسالك البولية",
+        "ENT": "الأنف والأذن والحنجرة", "H": "أمراض القلب",
+        "ICU": "تخدير العناية المركزة", "OP": "تخدير العمليات",
+        "R": "الأشعة و السونار", "ON": "الأورام", "D": "الوفيات"
     };
 
     let db = { names: [], schedule: [] };
@@ -153,6 +153,7 @@
 
     function getMedicalDate() {
         const now = new Date();
+        // Shift logic: Before 8 AM counts as "yesterday's" shift
         if (now.getHours() < 8) now.setDate(now.getDate() - 1);
         const d = String(now.getDate()).padStart(2, '0');
         const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -189,10 +190,11 @@
         const now = new Date();
         const timestamp = `${String(now.getDate()).padStart(2, '0')}-${now.toLocaleString('en-GB', {month:'short'})}-${now.getFullYear()} | ${now.toLocaleString('en-GB', {hour:'2-digit', minute:'2-digit', hour12:true}).toUpperCase()}`;
         
+        // Display Arabic title
+        document.getElementById('service-display').innerText = arabicSpecs[serviceCode?.toUpperCase()] || serviceCode || "SERVICE";
         document.getElementById('time-stamp').innerText = timestamp;
-        document.getElementById('service-display').innerText = arabicSpecs[serviceCode] || serviceCode || "SERVICE";
 
-        const entry = db.schedule.find(s => s.specCode === serviceCode && s.date === targetDate);
+        const entry = db.schedule.find(s => s.specCode === serviceCode?.toUpperCase() && s.date === targetDate);
 
         if (entry) {
             const info = db.names.find(n => n.name === entry.name);
@@ -204,16 +206,16 @@
             }
         } else {
             document.getElementById('name-display').innerText = "No Duty Found";
-            document.getElementById('phone-display').innerText = "Searched: " + targetDate;
+            document.getElementById('phone-display').innerText = "Date: " + targetDate;
             document.getElementById('call-link').classList.add('hidden');
+            document.getElementById('wa-link').classList.add('hidden');
         }
     }
 
     function openWhatsApp(e) {
         e.preventDefault();
-        const targetDate = getMedicalDate();
-        const entry = db.schedule.find(s => s.specCode === serviceCode && s.date === targetDate);
-        const info = db.names.find(n => n.name === entry?.name);
+        const name = document.getElementById('name-display').innerText;
+        const info = db.names.find(n => n.name === name);
         if (info?.phone) {
             window.location.href = "https://wa.me/" + info.phone.replace(/\D/g, '');
         }
