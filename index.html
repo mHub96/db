@@ -9,7 +9,7 @@
     <style>
         :root {
             --bg: #1a1c20; --light: #2a2d34; --shadow: #0d0e11;
-            --accent: #fbbf24; --crimson: #e11d48; --btn-grey: #33373e;
+            --accent: #fbbf24; --crimson: #e11d48; --emerald: #10b981;
         }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: #94a3b8; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
 
@@ -32,8 +32,6 @@
             stroke-dasharray: 500 1200; stroke-dashoffset: 1700;
             opacity: 0; transition: opacity 0.4s;
         }
-        .loading-active #tube-fluid { opacity: 1; animation: seamlessFlow 2s linear infinite; }
-        @keyframes seamlessFlow { from { stroke-dashoffset: 1700; } to { stroke-dashoffset: 0; } }
 
         .recessed-input {
             background: var(--bg); border-radius: 1.5rem;
@@ -49,6 +47,14 @@
 
         .fetched-active { background: var(--accent) !important; color: #1a1c20 !important; box-shadow: 0 0 25px rgba(251, 191, 36, 0.5) !important; }
 
+        .wa-glow { 
+            background: rgba(16, 185, 129, 0.1) !important; 
+            border: 1px solid var(--emerald); 
+            color: var(--emerald) !important;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+        }
+
+        /* Aesthetics: Incorrect PIN Shake */
         .crimson-warning { background: var(--crimson) !important; color: white !important; animation: quickShake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes quickShake {
             10%, 90% { transform: translate3d(-2px, 0, 0); }
@@ -59,7 +65,6 @@
         #shield { position: fixed; inset: 0; background: var(--bg); z-index: 100; transition: opacity 0.5s; }
         .hidden { display: none !important; }
         .rtl-text { direction: rtl; text-align: center; }
-        .phone-display { direction: ltr !important; unicode-bidi: isolate; display: inline-block; }
     </style>
 </head>
 <body class="p-4">
@@ -93,12 +98,11 @@
             </div>
             
             <h2 id="name-display" class="text-white text-3xl font-extrabold mb-1 rtl-text">...</h2>
-            
-            <p id="phone-display" class="text-slate-500 font-bold text-lg mb-8 phone-display">-</p>
+            <p id="phone-display" class="text-slate-500 font-bold text-lg mb-8" style="direction: ltr;">-</p>
             
             <div class="flex flex-row gap-2 w-full">
-                <a href="#" id="call-link" class="embossed-btn flex-1 py-5 uppercase text-center text-xs sm:text-base whitespace-nowrap">📞 SIM Call</a>
-                <a href="#" id="wa-link" onclick="openWhatsApp(event)" class="hidden flex-1 py-5 bg-emerald-500/20 border border-emerald-500 text-emerald-500 rounded-[1.5rem] font-extrabold text-center text-xs sm:text-base whitespace-nowrap">💬 WhatsApp</a>
+                <a href="#" id="call-link" class="embossed-btn flex-1 py-5 uppercase text-center text-xs sm:text-base">📞 SIM Call</a>
+                <a href="#" id="wa-link" onclick="openWhatsApp(event)" class="hidden embossed-btn wa-glow flex-1 py-5 font-extrabold text-center text-xs sm:text-base">💬 WhatsApp</a>
             </div>
             <p id="time-stamp" class="text-[0.65rem] text-slate-500 mt-10 font-bold tracking-wider uppercase"></p>
         </div>
@@ -108,7 +112,6 @@
     const CONFIG = { user: "mHub96", repo: "s", path: "data.json" };
     const GH_TOKEN = "ghp_dAUtsFhTH" + "a2KeJQOsxsC" + "Ct1vz8z1Z63" + "Am" + "sjS".replace(/\s/g, '');
 
-    // Full Arabic mapping for aesthetics
     const arabicSpecs = { 
         "NS": "جراحة الجملة العصبية", "CT": "جراحة الصدر و الاوعية الدموية", 
         "GS": "الجراحة العامة", "US": "جراحة المسالك البولية",
@@ -118,6 +121,7 @@
     };
 
     let db = { names: [], schedule: [] };
+    let todayResident = null;
     const urlParams = new URLSearchParams(window.location.search);
     
     function getParam(key) {
@@ -153,7 +157,6 @@
 
     function getMedicalDate() {
         const now = new Date();
-        // Shift logic: Before 8 AM counts as "yesterday's" shift
         if (now.getHours() < 8) now.setDate(now.getDate() - 1);
         const d = String(now.getDate()).padStart(2, '0');
         const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -178,10 +181,7 @@
             btn.classList.add('crimson-warning');
             const original = btn.innerText;
             btn.innerText = "INCORRECT PIN!";
-            setTimeout(() => { 
-                btn.classList.remove('crimson-warning'); 
-                btn.innerText = original; 
-            }, 1000);
+            setTimeout(() => { btn.classList.remove('crimson-warning'); btn.innerText = original; }, 1000);
         }
     }
 
@@ -190,15 +190,14 @@
         const now = new Date();
         const timestamp = `${String(now.getDate()).padStart(2, '0')}-${now.toLocaleString('en-GB', {month:'short'})}-${now.getFullYear()} | ${now.toLocaleString('en-GB', {hour:'2-digit', minute:'2-digit', hour12:true}).toUpperCase()}`;
         
-        // Display Arabic title
         document.getElementById('service-display').innerText = arabicSpecs[serviceCode?.toUpperCase()] || serviceCode || "SERVICE";
         document.getElementById('time-stamp').innerText = timestamp;
 
-        const entry = db.schedule.find(s => s.specCode === serviceCode?.toUpperCase() && s.date === targetDate);
+        todayResident = db.schedule.find(s => s.specCode === serviceCode?.toUpperCase() && s.date === targetDate);
 
-        if (entry) {
-            const info = db.names.find(n => n.name === entry.name);
-            document.getElementById('name-display').innerText = entry.name;
+        if (todayResident) {
+            const info = db.names.find(n => n.name === todayResident.name);
+            document.getElementById('name-display').innerText = todayResident.name;
             document.getElementById('phone-display').innerText = info ? info.phone : "No Number";
             if (info?.phone) {
                 document.getElementById('call-link').href = "tel:" + info.phone;
@@ -212,11 +211,11 @@
         }
     }
 
-function openWhatsApp(e) {
+    // BEAUTIFUL CODE RESTORED
+    function openWhatsApp(e) {
         e.preventDefault();
         const info = db.names.find(n => n.name === todayResident.name);
         if (info?.phone) window.location.href = "whatsapp://send?phone=" + info.phone;
-    }
     }
 </script>
 </body>
