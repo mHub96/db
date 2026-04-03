@@ -161,7 +161,7 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get('mode');
-    const serviceParam = urlParams.get('service')?.toUpperCase(); 
+    const service = urlParams.get('service'); 
 
     window.onload = async () => {
         setTimeout(() => { document.getElementById('shield')?.remove(); }, 500);
@@ -183,8 +183,10 @@
         } catch (e) { console.error(e); }
     }
 
+    // UNIFIED DATE LOGIC (The "Duty Time" Rule)
     function getMedicalDate() {
         const now = new Date();
+        // Shift context: If between midnight and 8 AM, it's still the previous day's shift.
         if (now.getHours() < 8) now.setDate(now.getDate() - 1);
         const d = String(now.getDate()).padStart(2, '0');
         const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -198,12 +200,8 @@
             card.style.opacity = "0";
             setTimeout(() => {
                 document.getElementById('login-view').classList.add('hidden');
-                if (mode === 'register') {
-                    document.getElementById('register-view').classList.remove('hidden');
-                } else {
-                    showLookupUI(); 
-                    document.getElementById('lookup-view').classList.remove('hidden');
-                }
+                if (mode === 'register') document.getElementById('register-view').classList.remove('hidden');
+                else { showLookupUI(); document.getElementById('lookup-view').classList.remove('hidden'); }
                 card.style.opacity = "1";
             }, 600);
         } else {
@@ -213,32 +211,6 @@
         }
     }
 
-    function showLookupUI() {
-        const todayStr = getMedicalDate();
-        const now = new Date();
-        const timestamp = `${String(now.getDate()).padStart(2, '0')}-${now.toLocaleString('en-GB', {month:'short'})}-${now.getFullYear()} | ${now.toLocaleString('en-GB', {hour:'2-digit', minute:'2-digit', hour12:true}).toUpperCase()}`;
-        
-        document.getElementById('service-display').innerText = arabicSpecs[serviceParam] || serviceParam || "SERVICE";
-        document.getElementById('time-stamp').innerText = timestamp;
-
-        todayResident = db.schedule.find(s => s.specCode === serviceParam && s.date === todayStr);
-        
-        if (todayResident) {
-            const info = db.names.find(n => n.name === todayResident.name);
-            document.getElementById('name-display').innerText = todayResident.name;
-            document.getElementById('phone-display').innerText = info ? info.phone : "No Number";
-            if (info?.phone) {
-                document.getElementById('call-link').href = "tel:" + info.phone;
-                document.getElementById('wa-link').classList.remove('hidden');
-            }
-        } else {
-            document.getElementById('name-display').innerText = "No Duty Found";
-            document.getElementById('phone-display').innerText = "Date: " + todayStr;
-            document.getElementById('wa-link').classList.add('hidden');
-        }
-    }
-
-    // REGISTER LOGIC
     function prepNameInput() {
         const spec = document.getElementById('spec-select').value;
         const section = document.getElementById('name-section');
@@ -254,22 +226,10 @@
         const val = document.getElementById('name-input').value.trim().toLowerCase().replace(/^د\.?\s*/, '');
         const box = document.getElementById('suggestions');
         if (!val) { box.classList.add('hidden'); return; }
-        const matches = currentPool.filter(n => n.name.toLowerCase().replace(/^د\.?\s*/, '').includes(val));
-        
-        matches.sort((a, b) => {
-            const aClean = a.name.toLowerCase().replace(/^د\.?\s*/, '');
-            const bClean = b.name.toLowerCase().replace(/^د\.?\s*/, '');
-            const aStarts = aClean.startsWith(val);
-            const bStarts = bClean.startsWith(val);
-            if (aStarts && !bStarts) return -1;
-            if (!aStarts && bStarts) return 1;
-            return aClean.localeCompare(bClean);
-        });
-
+        const matches = currentPool.filter(n => n.name.toLowerCase().includes(val));
         if (matches.length > 0) {
             box.innerHTML = matches.map(m => `<div class="suggestion-item" onclick="selectSuggestion('${m.name}')">${m.name}</div>`).join('');
             box.classList.remove('hidden');
-            selectedIndex = -1;
         } else box.classList.add('hidden');
     }
 
@@ -296,9 +256,14 @@
         if (!name || !spec) return;
 
         document.getElementById('main-card').classList.add('loading-active');
+        
+        // APPLYING DUTY TIME RULE HERE
         const dutyDate = getMedicalDate(); 
+        
         const entry = { 
-            date: dutyDate, specCode: spec, name: name, 
+            date: dutyDate, 
+            specCode: spec, 
+            name: name, 
             timestamp: new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}) 
         };
 
@@ -316,6 +281,24 @@
                 setTimeout(() => { location.reload(); }, 1500);
             }
         } catch (e) { btn.innerText = "RETRY ❌"; }
+    }
+
+    function showLookupUI() {
+        const todayStr = getMedicalDate();
+        const now = new Date();
+        document.getElementById('service-display').innerText = arabicSpecs[service?.toUpperCase()] || service || "SERVICE";
+        document.getElementById('time-stamp').innerText = now.toLocaleString('en-GB');
+
+        todayResident = db.schedule.find(s => s.specCode === service?.toUpperCase() && s.date === todayStr);
+        if (todayResident) {
+            const info = db.names.find(n => n.name === todayResident.name);
+            document.getElementById('name-display').innerText = todayResident.name;
+            document.getElementById('phone-display').innerText = info ? info.phone : "No Number";
+            if (info?.phone) {
+                document.getElementById('call-link').href = "tel:" + info.phone;
+                document.getElementById('wa-link').classList.remove('hidden');
+            }
+        } else document.getElementById('name-display').innerText = "No Duty Found";
     }
 
     function openWhatsApp(e) {
