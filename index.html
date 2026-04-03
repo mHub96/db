@@ -48,6 +48,7 @@
         }
 
         .fetched-active { background: var(--accent) !important; color: #1a1c20 !important; box-shadow: 0 0 25px rgba(251, 191, 36, 0.5) !important; }
+        .success-state { background: var(--emerald) !important; color: white !important; box-shadow: 0 0 25px rgba(16, 185, 129, 0.5) !important; }
         .wa-glow { background: rgba(16, 185, 129, 0.1) !important; border: 1px solid var(--emerald); color: var(--emerald) !important; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
 
         .crimson-warning { background: var(--crimson) !important; color: white !important; animation: quickShake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
@@ -136,7 +137,7 @@
                     </div>
                     <div id="suggestions" class="suggestions-box hidden absolute w-full z-50"></div>
                 </div>
-                <button id="submit-btn" onclick="submitRegistration()" class="embossed-btn w-full py-6 uppercase tracking-widest text-slate-200" style="background: var(--btn-grey);">UPDATE</button>
+                <button id="submit-btn" onclick="submitRegistration()" class="embossed-btn fetched-active w-full py-6 uppercase tracking-widest">UPDATE</button>
             </div>
         </div>
     </div>
@@ -219,13 +220,11 @@
             }, 600);
         } else {
             pin.value = "";
-            document.getElementById('entry-btn').classList.add('crimson-warning');
-            const original = document.getElementById('entry-btn').innerText;
-            document.getElementById('entry-btn').innerText = "INCORRECT PIN!";
-            setTimeout(() => { 
-                document.getElementById('entry-btn').classList.remove('crimson-warning'); 
-                document.getElementById('entry-btn').innerText = original; 
-            }, 1000);
+            const btn = document.getElementById('entry-btn');
+            btn.classList.add('crimson-warning');
+            const original = btn.innerText;
+            btn.innerText = "INCORRECT PIN!";
+            setTimeout(() => { btn.classList.remove('crimson-warning'); btn.innerText = original; }, 1000);
         }
     }
 
@@ -256,7 +255,6 @@
         }
     }
 
-    // REGISTRATION LOGIC
     function prepNameInput() {
         const spec = document.getElementById('spec-select').value;
         const section = document.getElementById('name-section');
@@ -274,7 +272,6 @@
         if (!val) { box.classList.add('hidden'); return; }
         
         const matches = currentPool.filter(n => n.name.toLowerCase().replace(/^د\.?\s*/, '').includes(val));
-        
         matches.sort((a, b) => {
             const aClean = a.name.toLowerCase().replace(/^د\.?\s*/, '');
             const bClean = b.name.toLowerCase().replace(/^د\.?\s*/, '');
@@ -312,9 +309,11 @@
         const btn = document.getElementById('submit-btn');
         const name = document.getElementById('name-input').value;
         const spec = document.getElementById('spec-select').value;
+        const card = document.getElementById('main-card');
+        
         if (!name || !spec) return;
 
-        document.getElementById('main-card').classList.add('loading-active');
+        card.classList.add('loading-active');
         const dutyDate = getMedicalDate(); 
         const entry = { 
             date: dutyDate, specCode: spec, name: name, 
@@ -325,16 +324,38 @@
         db.schedule.push(entry);
 
         try {
-            const body = { message: `Update: ${name}`, content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), sha: fileSha };
+            const body = { 
+                message: `Update: ${name}`, 
+                content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), 
+                sha: fileSha 
+            };
             const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
                 method: "PUT", headers: { "Authorization": `token ${GH_TOKEN}` }, body: JSON.stringify(body)
             });
+            
             if (res.ok) {
-                const r = await res.json(); fileSha = r.content.sha;
+                const r = await res.json(); 
+                fileSha = r.content.sha;
+                
+                // Visual Feedback & UI Reset
+                card.classList.remove('loading-active');
+                btn.classList.replace('fetched-active', 'success-state');
+                const originalText = btn.innerText;
                 btn.innerText = "SUCCESS ✅";
-                setTimeout(() => { location.reload(); }, 1500);
+
+                setTimeout(() => {
+                    btn.classList.replace('success-state', 'fetched-active');
+                    btn.innerText = originalText;
+                    // Reset Form
+                    document.getElementById('name-input').value = "";
+                    document.getElementById('spec-select').value = "";
+                    document.getElementById('name-section').classList.add('hidden');
+                }, 1000);
             }
-        } catch (e) { btn.innerText = "RETRY ❌"; document.getElementById('main-card').classList.remove('loading-active'); }
+        } catch (e) { 
+            card.classList.remove('loading-active');
+            btn.innerText = "RETRY ❌"; 
+        }
     }
 
     function openWhatsApp(e) {
