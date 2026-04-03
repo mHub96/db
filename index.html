@@ -183,10 +183,14 @@
         } catch (e) { console.error(e); }
     }
 
-    function getTodayStr() {
+    // UNIFIED DATE LOGIC (The "Duty Time" Rule)
+    function getMedicalDate() {
         const now = new Date();
+        // Shift context: If between midnight and 8 AM, it's still the previous day's shift.
         if (now.getHours() < 8) now.setDate(now.getDate() - 1);
-        return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        const d = String(now.getDate()).padStart(2, '0');
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        return `${d}/${m}/${now.getFullYear()}`;
     }
 
     function handleEntry() {
@@ -207,7 +211,6 @@
         }
     }
 
-    // REGISTRATION LOGIC
     function prepNameInput() {
         const spec = document.getElementById('spec-select').value;
         const section = document.getElementById('name-section');
@@ -253,7 +256,17 @@
         if (!name || !spec) return;
 
         document.getElementById('main-card').classList.add('loading-active');
-        const entry = { date: getTodayStr(), specCode: spec, name: name, timestamp: new Date().toLocaleTimeString() };
+        
+        // APPLYING DUTY TIME RULE HERE
+        const dutyDate = getMedicalDate(); 
+        
+        const entry = { 
+            date: dutyDate, 
+            specCode: spec, 
+            name: name, 
+            timestamp: new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}) 
+        };
+
         db.schedule = db.schedule.filter(s => !(s.date === entry.date && s.specCode === entry.specCode));
         db.schedule.push(entry);
 
@@ -270,9 +283,8 @@
         } catch (e) { btn.innerText = "RETRY ❌"; }
     }
 
-    // LOOKUP LOGIC
     function showLookupUI() {
-        const todayStr = getTodayStr();
+        const todayStr = getMedicalDate();
         const now = new Date();
         document.getElementById('service-display').innerText = arabicSpecs[service?.toUpperCase()] || service || "SERVICE";
         document.getElementById('time-stamp').innerText = now.toLocaleString('en-GB');
