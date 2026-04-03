@@ -183,10 +183,8 @@
         } catch (e) { console.error(e); }
     }
 
-    // UNIFIED DATE LOGIC (The "Duty Time" Rule)
     function getMedicalDate() {
         const now = new Date();
-        // Shift context: If between midnight and 8 AM, it's still the previous day's shift.
         if (now.getHours() < 8) now.setDate(now.getDate() - 1);
         const d = String(now.getDate()).padStart(2, '0');
         const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -222,15 +220,41 @@
         else currentPool = db.names.filter(n => n.spec === spec);
     }
 
+    // FIXED ALGORITHM: Prioritize First Names
     function filterNames() {
-        const val = document.getElementById('name-input').value.trim().toLowerCase().replace(/^د\.?\s*/, '');
+        const nameInput = document.getElementById('name-input');
+        // Clean input: remove "Dr." prefix and trim
+        const val = nameInput.value.trim().toLowerCase().replace(/^د\.?\s*/, '');
         const box = document.getElementById('suggestions');
+        
         if (!val) { box.classList.add('hidden'); return; }
-        const matches = currentPool.filter(n => n.name.toLowerCase().includes(val));
+
+        // 1. Find all matches (Resident, Father, or Grandfather)
+        const matches = currentPool.filter(n => {
+            const cleanName = n.name.toLowerCase().replace(/^د\.?\s*/, '');
+            return cleanName.includes(val);
+        });
+
+        // 2. Sort matches: Priority to those whose FIRST name starts with the value
+        matches.sort((a, b) => {
+            const aClean = a.name.toLowerCase().replace(/^د\.?\s*/, '');
+            const bClean = b.name.toLowerCase().replace(/^د\.?\s*/, '');
+            
+            const aStarts = aClean.startsWith(val);
+            const bStarts = bClean.startsWith(val);
+
+            if (aStarts && !bStarts) return -1; // 'a' comes first
+            if (!aStarts && bStarts) return 1;  // 'b' comes first
+            return aClean.localeCompare(bClean); // Otherwise sort alphabetically
+        });
+
         if (matches.length > 0) {
             box.innerHTML = matches.map(m => `<div class="suggestion-item" onclick="selectSuggestion('${m.name}')">${m.name}</div>`).join('');
             box.classList.remove('hidden');
-        } else box.classList.add('hidden');
+            selectedIndex = -1;
+        } else {
+            box.classList.add('hidden');
+        }
     }
 
     function handleNameKey(e) {
@@ -256,8 +280,6 @@
         if (!name || !spec) return;
 
         document.getElementById('main-card').classList.add('loading-active');
-        
-        // APPLYING DUTY TIME RULE HERE
         const dutyDate = getMedicalDate(); 
         
         const entry = { 
