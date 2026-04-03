@@ -8,29 +8,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #1a1c20;
-            --light: #2a2d34;
-            --shadow: #0d0e11;
-            --accent: #fbbf24;
-            --crimson: #e11d48;
-            --btn-grey: #33373e;
+            --bg: #1a1c20; --light: #2a2d34; --shadow: #0d0e11;
+            --accent: #fbbf24; --crimson: #e11d48; --btn-grey: #33373e;
         }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: #94a3b8; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
 
+        /* AESTHETICS: Breathing Neumorphic Card */
         .embossed-card {
-            position: relative;
-            background: var(--bg);
-            border-radius: 3rem;
+            position: relative; background: var(--bg); border-radius: 3rem;
             box-shadow: 20px 20px 60px var(--shadow), -10px -10px 40px var(--light);
-            z-index: 10;
+            z-index: 10; transition: all 0.7s ease;
         }
-
         .breathing { animation: frameBreath 3s infinite ease-in-out; }
         @keyframes frameBreath {
             0%, 100% { box-shadow: 20px 20px 60px var(--shadow), -10px -10px 40px var(--light); }
-            50% { box-shadow: 15px 15px 45px var(--shadow), -8px -8px 30px var(--light), 0 0 50px rgba(251, 191, 36, 0.3); }
+            50% { box-shadow: 15px 15px 45px var(--shadow), -8px -8px 30px var(--light), 0 0 50px rgba(251, 191, 36, 0.2); }
         }
 
+        /* AESTHETICS: Fluid Tube Path */
         .tube-container { position: absolute; inset: 0; pointer-events: none; z-index: 20; width: 100%; height: 100%; }
         #tube-bg { fill: none; stroke: rgba(251, 191, 36, 0.03); stroke-width: 4; }
         #tube-fluid {
@@ -39,54 +34,42 @@
             stroke-dasharray: 500 1200; stroke-dashoffset: 1700;
             opacity: 0; transition: opacity 0.4s;
         }
-
         .loading-active #tube-fluid { opacity: 1; animation: seamlessFlow 2s linear infinite; }
         @keyframes seamlessFlow { from { stroke-dashoffset: 1700; } to { stroke-dashoffset: 0; } }
 
         .recessed-input {
-            background: var(--bg);
-            border-radius: 1.5rem;
+            background: var(--bg); border-radius: 1.5rem;
             box-shadow: inset 8px 8px 16px var(--shadow), inset -4px -4px 12px var(--light);
         }
 
         .embossed-btn {
-            background: var(--bg);
-            border-radius: 1.5rem;
+            background: var(--bg); border-radius: 1.5rem;
             box-shadow: 10px 10px 20px var(--shadow), -5px -5px 15px var(--light);
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             color: #64748b; font-weight: 800;
         }
 
-        .btn-register { background: var(--btn-grey); color: #e2e8f0; }
-        .fetched-active { background: var(--accent) !important; color: #1a1c20 !important; box-shadow: 0 0 25px rgba(251, 191, 36, 0.6) !important; }
+        .fetched-active { background: var(--accent) !important; color: #1a1c20 !important; box-shadow: 0 0 25px rgba(251, 191, 36, 0.5) !important; }
+
+        /* FIX: Quick Crimson Shake for PIN Error */
+        .crimson-warning { background: var(--crimson) !important; color: white !important; animation: quickShake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes quickShake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            30%, 70% { transform: translate3d(4px, 0, 0); }
+            40%, 60% { transform: translate3d(-4px, 0, 0); }
+        }
 
         #shield { position: fixed; inset: 0; background: var(--bg); z-index: 100; transition: opacity 0.5s; }
-        .phone-display { direction: ltr !important; unicode-bidi: isolate; display: inline-block; }
         .hidden { display: none !important; }
-
-        /* RTL & Alignment */
-        .centered-select { direction: ltr; text-align: center; text-align-last: center; }
-        .rtl-input { direction: rtl; text-align: right; }
-
-        .suggestions-box {
-            max-height: 200px;
-            overflow-y: auto;
-            border-radius: 1rem;
-            margin-top: 0.5rem;
-            background: var(--bg);
-            box-shadow: 10px 10px 20px var(--shadow);
-            direction: rtl;
-        }
-        .suggestion-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--light); text-align: right; }
-        .suggestion-item:hover, .suggestion-item.selected { background: var(--light); color: var(--accent); }
+        .rtl-text { direction: rtl; text-align: right; }
+        .phone-display { direction: ltr !important; unicode-bidi: isolate; display: inline-block; }
     </style>
 </head>
 <body class="p-4">
 
     <div id="shield"></div>
 
-    <div id="main-card" class="w-full max-w-sm embossed-card breathing p-10 transition-all duration-700 mx-auto">
-        
+    <div id="main-card" class="w-full max-w-sm embossed-card breathing p-10 mx-auto">
         <svg class="tube-container" viewBox="0 0 384 512" preserveAspectRatio="none">
             <rect id="tube-bg" x="2" y="2" width="380" height="508" rx="48" />
             <rect id="tube-fluid" x="2" y="2" width="380" height="508" rx="48" />
@@ -107,52 +90,16 @@
             </div>
         </div>
 
-        <div id="register-view" class="hidden space-y-6">
-            <h2 class="text-white text-xl font-extrabold text-center mb-2">Duty Update 🇮🇶</h2>
-            <div class="recessed-input p-2">
-                <select id="spec-select" onchange="prepNameInput()" class="w-full bg-transparent p-4 text-slate-300 font-bold outline-none appearance-none centered-select">
-                    <option value="" class="bg-[#1a1c20]">SPECIALTY</option>
-                    <option value="NS" class="bg-[#1a1c20]">جراحة الجملة العصبية</option>
-                    <option value="CT" class="bg-[#1a1c20]">جراحة الصدر و الاوعية الدموية</option>
-                    <option value="GS" class="bg-[#1a1c20]">الجراحة العامة</option>
-                    <option value="US" class="bg-[#1a1c20]">جراحة المسالك البولية</option>
-                    <option value="ENT" class="bg-[#1a1c20]">الأنف والأذن والحنجرة</option>
-                    <option value="H" class="bg-[#1a1c20]">أمراض القلب</option>
-                    <option value="ICU" class="bg-[#1a1c20]">تخدير العناية المركزة</option>
-                    <option value="OP" class="bg-[#1a1c20]">تخدير العمليات</option>
-                    <option value="R" class="bg-[#1a1c20]">الأشعة و السونار</option>
-                    <option value="ON" class="bg-[#1a1c20]">الأورام</option>
-                    <option value="D" class="bg-[#1a1c20]">الوفيات</option>
-                </select>
-            </div>
-
-            <div id="name-section" class="hidden space-y-4">
-                <div class="relative">
-                    <div class="recessed-input p-2">
-                        <input type="text" id="name-input" autocomplete="off" placeholder="اسم المقيم..." 
-                            oninput="filterNames()" 
-                            onkeydown="handleNameKey(event)"
-                            onblur="setTimeout(() => document.getElementById('suggestions').classList.add('hidden'), 200)"
-                            class="w-full bg-transparent p-4 text-slate-300 font-bold outline-none rtl-input">
-                    </div>
-                    <div id="suggestions" class="suggestions-box hidden absolute w-full z-50"></div>
-                </div>
-                <button id="submit-btn" onclick="submitRegistration()" class="embossed-btn btn-register w-full py-6 uppercase tracking-widest">
-                    UPDATE
-                </button>
-            </div>
-        </div>
-
         <div id="lookup-view" class="hidden text-center">
             <div class="recessed-input inline-block px-6 py-4 mb-6">
-                <span id="service-display" class="text-amber-500 text-xl sm:text-2xl font-black uppercase">SERVICE</span>
+                <span id="service-display" class="text-amber-500 text-xl font-black uppercase">SERVICE</span>
             </div>
-            <h2 id="name-display" class="text-white text-3xl font-extrabold mb-1">...</h2>
+            <h2 id="name-display" class="text-white text-3xl font-extrabold mb-1 rtl-text">...</h2>
             <p id="phone-display" class="text-slate-500 font-bold text-lg mb-8 phone-display">-</p>
             
             <div class="flex flex-row gap-2 w-full">
-                <a href="#" id="call-link" class="embossed-btn flex-1 py-5 px-1 uppercase tracking-tighter whitespace-nowrap text-[0.75rem] sm:text-base text-center">📞 SIM Call</a>
-                <a href="#" id="wa-link" onclick="openWhatsApp(event)" class="hidden flex-1 py-5 px-1 bg-emerald-500/20 border border-emerald-500 text-emerald-500 rounded-[1.5rem] font-extrabold shadow-lg tracking-tighter whitespace-nowrap text-[0.75rem] sm:text-base text-center">💬 WhatsApp</a>
+                <a href="#" id="call-link" class="embossed-btn flex-1 py-5 uppercase text-center text-xs sm:text-base whitespace-nowrap">📞 SIM Call</a>
+                <a href="#" id="wa-link" onclick="openWhatsApp(event)" class="hidden flex-1 py-5 bg-emerald-500/20 border border-emerald-500 text-emerald-500 rounded-[1.5rem] font-extrabold text-center text-xs sm:text-base whitespace-nowrap">💬 WhatsApp</a>
             </div>
             <p id="time-stamp" class="text-[0.65rem] text-slate-500 mt-10 font-bold tracking-wider uppercase"></p>
         </div>
@@ -162,12 +109,17 @@
     const CONFIG = { user: "mHub96", repo: "s", path: "data.json" };
     const GH_TOKEN = "ghp_dAUtsFhTH" + "a2KeJQOsxsC" + "Ct1vz8z1Z63" + "Am" + "sjS".replace(/\s/g, '');
 
-    const arabicSpecs = { "NS": "جراحة الجملة العصبية", "CT": "جراحة الصدر و الاوعية الدموية", "GS": "الجراحة العامة" };
+    const arabicSpecs = { 
+        "NS": "جراحة الجملة العصبية", 
+        "CT": "جراحة الصدر و الاوعية الدموية", 
+        "GS": "الجراحة العامة",
+        "US": "جراحة المسالك البولية",
+        "H": "أمراض القلب"
+    };
 
     let db = { names: [], schedule: [] };
     const urlParams = new URLSearchParams(window.location.search);
     
-    // CASE-INSENSITIVE Parameter Fetching
     function getParam(key) {
         for (let [k, v] of urlParams.entries()) {
             if (k.toLowerCase() === key.toLowerCase()) return v;
@@ -175,9 +127,15 @@
         return null;
     }
 
-    const serviceCode = getParam('service'); // Works for both ?Service= and ?service=
+    const serviceCode = getParam('service');
 
-    window.onload = async () => { await fetchData(); };
+    window.onload = async () => { 
+        setTimeout(() => { 
+            const s = document.getElementById('shield');
+            if(s) { s.style.opacity = '0'; setTimeout(() => s.remove(), 500); }
+        }, 300);
+        await fetchData(); 
+    };
 
     async function fetchData() {
         try {
@@ -195,29 +153,34 @@
 
     function getMedicalDate() {
         const now = new Date();
-        // If it's 3:16 AM, we are looking for the shift that started at 8 AM yesterday.
-        if (now.getHours() < 8) {
-            now.setDate(now.getDate() - 1);
-        }
+        if (now.getHours() < 8) now.setDate(now.getDate() - 1);
         const d = String(now.getDate()).padStart(2, '0');
         const m = String(now.getMonth() + 1).padStart(2, '0');
-        const y = now.getFullYear();
-        return `${d}/${m}/${y}`;
+        return `${d}/${m}/${now.getFullYear()}`;
     }
 
     function handleEntry() {
         const pin = document.getElementById('pw');
         const btn = document.getElementById('entry-btn');
+        const card = document.getElementById('main-card');
+
         if (pin.value === "1234") {
-            document.getElementById('login-view').classList.add('hidden');
-            showLookupUI();
-            document.getElementById('lookup-view').classList.remove('hidden');
+            card.style.opacity = "0";
+            setTimeout(() => {
+                document.getElementById('login-view').classList.add('hidden');
+                showLookupUI();
+                document.getElementById('lookup-view').classList.remove('hidden');
+                card.style.opacity = "1";
+            }, 600);
         } else {
             pin.value = "";
             btn.classList.add('crimson-warning');
             const original = btn.innerText;
-            btn.innerText = "INCORRECT PIN";
-            setTimeout(() => { btn.classList.remove('crimson-warning'); btn.innerText = original; }, 1000);
+            btn.innerText = "INCORRECT PIN!";
+            setTimeout(() => { 
+                btn.classList.remove('crimson-warning'); 
+                btn.innerText = original; 
+            }, 1000);
         }
     }
 
@@ -229,7 +192,6 @@
         document.getElementById('time-stamp').innerText = timestamp;
         document.getElementById('service-display').innerText = arabicSpecs[serviceCode] || serviceCode || "SERVICE";
 
-        // Find the resident
         const entry = db.schedule.find(s => s.specCode === serviceCode && s.date === targetDate);
 
         if (entry) {
@@ -242,7 +204,7 @@
             }
         } else {
             document.getElementById('name-display').innerText = "No Duty Found";
-            document.getElementById('phone-display').innerText = "Date: " + targetDate;
+            document.getElementById('phone-display').innerText = "Searched: " + targetDate;
             document.getElementById('call-link').classList.add('hidden');
         }
     }
