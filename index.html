@@ -9,7 +9,7 @@
     <style>
         :root {
             --bg: #1a1c20; --light: #2a2d34; --shadow: #0d0e11;
-            --accent: #fbbf24; --crimson: #e11d48; --emerald: #10b981;
+            --accent: #fbbf24; --crimson: #e11d48; --emerald: #10b981; --btn-grey: #33373e;
         }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: #94a3b8; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
 
@@ -32,6 +32,8 @@
             stroke-dasharray: 500 1200; stroke-dashoffset: 1700;
             opacity: 0; transition: opacity 0.4s;
         }
+        .loading-active #tube-fluid { opacity: 1; animation: seamlessFlow 2s linear infinite; }
+        @keyframes seamlessFlow { from { stroke-dashoffset: 1700; } to { stroke-dashoffset: 0; } }
 
         .recessed-input {
             background: var(--bg); border-radius: 1.5rem;
@@ -45,26 +47,27 @@
             color: #64748b; font-weight: 800;
         }
 
+        .btn-register { background: var(--btn-grey); color: #e2e8f0; }
         .fetched-active { background: var(--accent) !important; color: #1a1c20 !important; box-shadow: 0 0 25px rgba(251, 191, 36, 0.5) !important; }
-
-        .wa-glow { 
-            background: rgba(16, 185, 129, 0.1) !important; 
-            border: 1px solid var(--emerald); 
-            color: var(--emerald) !important;
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
-        }
-
-        /* Aesthetics: Incorrect PIN Shake */
-        .crimson-warning { background: var(--crimson) !important; color: white !important; animation: quickShake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        
+        .crimson-warning { background: var(--crimson) !important; color: white !important; animation: quickShake 0.3s both; }
         @keyframes quickShake {
             10%, 90% { transform: translate3d(-2px, 0, 0); }
             30%, 70% { transform: translate3d(4px, 0, 0); }
             40%, 60% { transform: translate3d(-4px, 0, 0); }
         }
 
+        .suggestions-box {
+            max-height: 200px; overflow-y: auto; border-radius: 1rem; margin-top: 0.5rem;
+            background: var(--bg); box-shadow: 10px 10px 20px var(--shadow); direction: rtl;
+        }
+        .suggestion-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--light); text-align: right; }
+        .suggestion-item:hover, .suggestion-item.selected { background: var(--light); color: var(--accent); }
+
         #shield { position: fixed; inset: 0; background: var(--bg); z-index: 100; transition: opacity 0.5s; }
         .hidden { display: none !important; }
-        .rtl-text { direction: rtl; text-align: center; }
+        .rtl-input { direction: rtl; text-align: right; }
+        .centered-select { direction: ltr; text-align: center; text-align-last: center; }
     </style>
 </head>
 <body class="p-4">
@@ -92,17 +95,48 @@
             </div>
         </div>
 
+        <div id="register-view" class="hidden space-y-6">
+            <h2 class="text-white text-xl font-extrabold text-center mb-2">Duty Update 🇮🇶</h2>
+            <div class="recessed-input p-2">
+                <select id="spec-select" onchange="prepNameInput()" class="w-full bg-transparent p-4 text-slate-300 font-bold outline-none appearance-none centered-select">
+                    <option value="" class="bg-[#1a1c20]">SPECIALTY</option>
+                    <option value="NS" class="bg-[#1a1c20]">جراحة الجملة العصبية</option>
+                    <option value="CT" class="bg-[#1a1c20]">جراحة الصدر و الاوعية الدموية</option>
+                    <option value="GS" class="bg-[#1a1c20]">الجراحة العامة</option>
+                    <option value="US" class="bg-[#1a1c20]">جراحة المسالك البولية</option>
+                    <option value="ENT" class="bg-[#1a1c20]">الأنف والأذن والحنجرة</option>
+                    <option value="H" class="bg-[#1a1c20]">أمراض القلب</option>
+                    <option value="ICU" class="bg-[#1a1c20]">تخدير العناية المركزة</option>
+                    <option value="OP" class="bg-[#1a1c20]">تخدير العمليات</option>
+                    <option value="R" class="bg-[#1a1c20]">الأشعة و السونار</option>
+                    <option value="ON" class="bg-[#1a1c20]">الأورام</option>
+                    <option value="D" class="bg-[#1a1c20]">الوفيات</option>
+                </select>
+            </div>
+
+            <div id="name-section" class="hidden space-y-4">
+                <div class="relative">
+                    <div class="recessed-input p-2">
+                        <input type="text" id="name-input" autocomplete="off" placeholder="اسم المقيم..." 
+                            oninput="filterNames()" onkeydown="handleNameKey(event)"
+                            onblur="setTimeout(() => document.getElementById('suggestions').classList.add('hidden'), 200)"
+                            class="w-full bg-transparent p-4 text-slate-300 font-bold outline-none rtl-input">
+                    </div>
+                    <div id="suggestions" class="suggestions-box hidden absolute w-full z-50"></div>
+                </div>
+                <button id="submit-btn" onclick="submitRegistration()" class="embossed-btn btn-register w-full py-6 uppercase tracking-widest">UPDATE</button>
+            </div>
+        </div>
+
         <div id="lookup-view" class="hidden text-center">
             <div class="recessed-input inline-block px-6 py-4 mb-6">
                 <span id="service-display" class="text-amber-500 text-xl font-black uppercase">...</span>
             </div>
-            
-            <h2 id="name-display" class="text-white text-3xl font-extrabold mb-1 rtl-text">...</h2>
+            <h2 id="name-display" class="text-white text-3xl font-extrabold mb-1" style="direction: rtl;">...</h2>
             <p id="phone-display" class="text-slate-500 font-bold text-lg mb-8" style="direction: ltr;">-</p>
-            
             <div class="flex flex-row gap-2 w-full">
                 <a href="#" id="call-link" class="embossed-btn flex-1 py-5 uppercase text-center text-xs sm:text-base">📞 SIM Call</a>
-                <a href="#" id="wa-link" onclick="openWhatsApp(event)" class="hidden embossed-btn wa-glow flex-1 py-5 font-extrabold text-center text-xs sm:text-base">💬 WhatsApp</a>
+                <a href="#" id="wa-link" onclick="openWhatsApp(event)" class="hidden embossed-btn flex-1 py-5 border border-emerald-500 text-emerald-500 font-extrabold text-center text-xs sm:text-base">💬 WhatsApp</a>
             </div>
             <p id="time-stamp" class="text-[0.65rem] text-slate-500 mt-10 font-bold tracking-wider uppercase"></p>
         </div>
@@ -110,35 +144,28 @@
 
 <script>
     const CONFIG = { user: "mHub96", repo: "s", path: "data.json" };
-    const GH_TOKEN = "ghp_dAUtsFhTH" + "a2KeJQOsxsC" + "Ct1vz8z1Z63" + "Am" + "sjS".replace(/\s/g, '');
+    const GH_TOKEN = ("ghp_dAUtsFhTH" + "a2KeJQOsxsC" + "Ct1vz8z1Z63" + "Am sjS").replace(/\s/g, '');
 
     const arabicSpecs = { 
-        "NS": "جراحة الجملة العصبية", "CT": "جراحة الصدر و الاوعية الدموية", 
-        "GS": "الجراحة العامة", "US": "جراحة المسالك البولية",
-        "ENT": "الأنف والأذن والحنجرة", "H": "أمراض القلب",
-        "ICU": "تخدير العناية المركزة", "OP": "تخدير العمليات",
-        "R": "الأشعة و السونار", "ON": "الأورام", "D": "الوفيات"
+        "NS": "جراحة الجملة العصبية", "CT": "جراحة الصدر و الاوعية الدموية", "GS": "الجراحة العامة",
+        "US": "جراحة المسالك البولية", "ENT": "الأنف والأذن والحنجرة", "H": "أمراض القلب",
+        "ICU": "تخدير العناية المركزة", "OP": "تخدير العمليات", "R": "الأشعة و السونار",
+        "ON": "الأورام", "D": "الوفيات"
     };
 
     let db = { names: [], schedule: [] };
+    let fileSha = "";
     let todayResident = null;
+    let currentPool = [];
+    let selectedIndex = -1;
+
     const urlParams = new URLSearchParams(window.location.search);
-    
-    function getParam(key) {
-        for (let [k, v] of urlParams.entries()) {
-            if (k.toLowerCase() === key.toLowerCase()) return v;
-        }
-        return null;
-    }
+    const mode = urlParams.get('mode');
+    const service = urlParams.get('service'); 
 
-    const serviceCode = getParam('service');
-
-    window.onload = async () => { 
-        setTimeout(() => { 
-            const s = document.getElementById('shield');
-            if(s) { s.style.opacity = '0'; setTimeout(() => s.remove(), 500); }
-        }, 300);
-        await fetchData(); 
+    window.onload = async () => {
+        setTimeout(() => { document.getElementById('shield')?.remove(); }, 500);
+        await fetchData();
     };
 
     async function fetchData() {
@@ -148,53 +175,109 @@
             });
             if (res.ok) {
                 const data = await res.json();
+                fileSha = data.sha;
                 db = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
                 document.getElementById('status-text').innerText = "READY 🇮🇶";
                 document.getElementById('entry-btn').classList.add('fetched-active');
             }
-        } catch (e) { document.getElementById('status-text').innerText = "OFFLINE"; }
+        } catch (e) { console.error(e); }
     }
 
-    function getMedicalDate() {
+    function getTodayStr() {
         const now = new Date();
         if (now.getHours() < 8) now.setDate(now.getDate() - 1);
-        const d = String(now.getDate()).padStart(2, '0');
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        return `${d}/${m}/${now.getFullYear()}`;
+        return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
     }
 
     function handleEntry() {
         const pin = document.getElementById('pw');
-        const btn = document.getElementById('entry-btn');
         const card = document.getElementById('main-card');
-
-        if (pin.value === "1234") {
+        if (pin.value === "1234") { 
             card.style.opacity = "0";
             setTimeout(() => {
                 document.getElementById('login-view').classList.add('hidden');
-                showLookupUI();
-                document.getElementById('lookup-view').classList.remove('hidden');
+                if (mode === 'register') document.getElementById('register-view').classList.remove('hidden');
+                else { showLookupUI(); document.getElementById('lookup-view').classList.remove('hidden'); }
                 card.style.opacity = "1";
             }, 600);
         } else {
             pin.value = "";
-            btn.classList.add('crimson-warning');
-            const original = btn.innerText;
-            btn.innerText = "INCORRECT PIN!";
-            setTimeout(() => { btn.classList.remove('crimson-warning'); btn.innerText = original; }, 1000);
+            document.getElementById('entry-btn').classList.add('crimson-warning');
+            setTimeout(() => document.getElementById('entry-btn').classList.remove('crimson-warning'), 500);
         }
     }
 
+    // REGISTRATION LOGIC
+    function prepNameInput() {
+        const spec = document.getElementById('spec-select').value;
+        const section = document.getElementById('name-section');
+        if (!spec) { section.classList.add('hidden'); return; }
+        document.getElementById('name-input').value = "";
+        section.classList.remove('hidden');
+        if (spec === "ICU" || spec === "OP") currentPool = db.names.filter(n => n.spec === "A");
+        else if (spec === "D") currentPool = db.names;
+        else currentPool = db.names.filter(n => n.spec === spec);
+    }
+
+    function filterNames() {
+        const val = document.getElementById('name-input').value.trim().toLowerCase().replace(/^د\.?\s*/, '');
+        const box = document.getElementById('suggestions');
+        if (!val) { box.classList.add('hidden'); return; }
+        const matches = currentPool.filter(n => n.name.toLowerCase().includes(val));
+        if (matches.length > 0) {
+            box.innerHTML = matches.map(m => `<div class="suggestion-item" onclick="selectSuggestion('${m.name}')">${m.name}</div>`).join('');
+            box.classList.remove('hidden');
+        } else box.classList.add('hidden');
+    }
+
+    function handleNameKey(e) {
+        const items = document.querySelectorAll('.suggestion-item');
+        if (e.key === "ArrowDown") selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+        else if (e.key === "ArrowUp") selectedIndex = Math.max(selectedIndex - 1, 0);
+        else if (e.key === "Enter") {
+            if (selectedIndex > -1) selectSuggestion(items[selectedIndex].innerText);
+            else submitRegistration();
+        }
+        items.forEach((item, i) => item.classList.toggle('selected', i === selectedIndex));
+    }
+
+    function selectSuggestion(name) {
+        document.getElementById('name-input').value = name;
+        document.getElementById('suggestions').classList.add('hidden');
+    }
+
+    async function submitRegistration() {
+        const btn = document.getElementById('submit-btn');
+        const name = document.getElementById('name-input').value;
+        const spec = document.getElementById('spec-select').value;
+        if (!name || !spec) return;
+
+        document.getElementById('main-card').classList.add('loading-active');
+        const entry = { date: getTodayStr(), specCode: spec, name: name, timestamp: new Date().toLocaleTimeString() };
+        db.schedule = db.schedule.filter(s => !(s.date === entry.date && s.specCode === entry.specCode));
+        db.schedule.push(entry);
+
+        try {
+            const body = { message: `Update: ${name}`, content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))), sha: fileSha };
+            const res = await fetch(`https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.path}`, {
+                method: "PUT", headers: { "Authorization": `token ${GH_TOKEN}` }, body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                const r = await res.json(); fileSha = r.content.sha;
+                btn.innerText = "SUCCESS ✅";
+                setTimeout(() => { location.reload(); }, 1500);
+            }
+        } catch (e) { btn.innerText = "RETRY ❌"; }
+    }
+
+    // LOOKUP LOGIC
     function showLookupUI() {
-        const targetDate = getMedicalDate();
+        const todayStr = getTodayStr();
         const now = new Date();
-        const timestamp = `${String(now.getDate()).padStart(2, '0')}-${now.toLocaleString('en-GB', {month:'short'})}-${now.getFullYear()} | ${now.toLocaleString('en-GB', {hour:'2-digit', minute:'2-digit', hour12:true}).toUpperCase()}`;
-        
-        document.getElementById('service-display').innerText = arabicSpecs[serviceCode?.toUpperCase()] || serviceCode || "SERVICE";
-        document.getElementById('time-stamp').innerText = timestamp;
+        document.getElementById('service-display').innerText = arabicSpecs[service?.toUpperCase()] || service || "SERVICE";
+        document.getElementById('time-stamp').innerText = now.toLocaleString('en-GB');
 
-        todayResident = db.schedule.find(s => s.specCode === serviceCode?.toUpperCase() && s.date === targetDate);
-
+        todayResident = db.schedule.find(s => s.specCode === service?.toUpperCase() && s.date === todayStr);
         if (todayResident) {
             const info = db.names.find(n => n.name === todayResident.name);
             document.getElementById('name-display').innerText = todayResident.name;
@@ -203,15 +286,9 @@
                 document.getElementById('call-link').href = "tel:" + info.phone;
                 document.getElementById('wa-link').classList.remove('hidden');
             }
-        } else {
-            document.getElementById('name-display').innerText = "No Duty Found";
-            document.getElementById('phone-display').innerText = "Date: " + targetDate;
-            document.getElementById('call-link').classList.add('hidden');
-            document.getElementById('wa-link').classList.add('hidden');
-        }
+        } else document.getElementById('name-display').innerText = "No Duty Found";
     }
 
-    // BEAUTIFUL CODE RESTORED
     function openWhatsApp(e) {
         e.preventDefault();
         const info = db.names.find(n => n.name === todayResident.name);
